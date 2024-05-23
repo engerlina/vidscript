@@ -12,20 +12,33 @@
       align-items: center;
       justify-content: center;
     }
+    .page-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 0;
+    }
+    #thumbnail {
+      border-radius: 30px;
+    }
+    h1 {
+      font-size: 2.5rem;
+    }
   </style>
 </head>
 <body>
-  <div class="container mx-auto mt-8 flex flex-col items-center">
-    <h1 class="text-3xl font-bold mb-4">Transcribe YouTube Videos</h1>
-    <div class="mb-4 input-container">
-      <input id="urlInput" type="text" placeholder="Enter a YouTube URL" class="input input-bordered w-full max-w-2xl mr-2" />
+  <div class="page-container">
+    <h1 class="text-center font-bold mb-8">Transcribe YouTube Videos</h1>
+    <div class="mb-8 input-container">
+      <input id="urlInput" type="text" placeholder="Enter a YouTube URL" class="input input-bordered w-full mr-2" />
       <button id="transcribeBtn" class="btn btn-primary">Transcribe</button>
     </div>
     <div id="results" class="hidden">
-      <img id="thumbnail" src="" alt="YouTube Video Thumbnail" class="mb-4 max-w-2xl mx-auto">
-      <div id="transcription" class="mb-4"></div>
-      <button id="downloadTxtBtn" class="btn btn-secondary mr-2">Download TXT</button>
-      <button id="downloadCsvBtn" class="btn btn-secondary">Download CSV</button>
+      <img id="thumbnail" src="" alt="YouTube Video Thumbnail" class="mb-8 mx-auto">
+      <div id="transcription" class="mb-8 text-lg"></div>
+      <div class="text-center">
+        <button id="downloadTxtBtn" class="btn btn-secondary mr-2">Download TXT</button>
+        <button id="downloadCsvBtn" class="btn btn-secondary">Download CSV</button>
+      </div>
     </div>
   </div>
   <script src="app.js"></script>
