@@ -23,6 +23,17 @@
     .custom-h1 {
       font-size: 36px; /* Adjust the font size as needed */
     }
+    @media (max-width: 640px) {
+      .page-container {
+        margin: 0 10px;
+      }
+      .button-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -34,16 +45,11 @@
     </div>
     <div id="results" class="hidden">
       <img id="thumbnail" src="" alt="YouTube Video Thumbnail" class="mb-8 mx-auto">
-      <div class="text-center">
-        <button id="copyTranscriptionBtn" class="btn btn-secondary mr-2">Copy Transcription</button>
-        <button id="downloadTxtBtn" class="btn btn-secondary mr-2">Download TXT</button>
-        <button id="downloadCsvBtn" class="btn btn-secondary">Download CSV</button>
-      </div>
       <h2 id="videoTitle" class="text-xl font-bold mb-4"></h2>
       <div id="transcription" class="mb-8 text-lg"></div>
-      <div class="text-center">
-        <button id="copyTranscriptionBtn" class="btn btn-secondary mr-2">Copy Transcription</button>
-        <button id="downloadTxtBtn" class="btn btn-secondary mr-2">Download TXT</button>
+      <div class="text-center button-container">
+        <button id="copyTranscriptionBtn" class="btn btn-secondary">Copy Transcription</button>
+        <button id="downloadTxtBtn" class="btn btn-secondary">Download TXT</button>
         <button id="downloadCsvBtn" class="btn btn-secondary">Download CSV</button>
       </div>
     </div>
