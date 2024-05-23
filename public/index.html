@@ -6,15 +6,23 @@
   <title>YouTube Video Transcription</title>
   <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.6/dist/full.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .input-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
 </head>
 <body>
-  <div class="container mx-auto mt-8">
+  <div class="container mx-auto mt-8 flex flex-col items-center">
     <h1 class="text-3xl font-bold mb-4">Transcribe YouTube Videos</h1>
-    <div class="mb-4">
-      <input id="urlInput" type="text" placeholder="Enter a YouTube URL" class="input input-bordered w-full max-w-xs mr-2" />
+    <div class="mb-4 input-container">
+      <input id="urlInput" type="text" placeholder="Enter a YouTube URL" class="input input-bordered w-full max-w-2xl mr-2" />
       <button id="transcribeBtn" class="btn btn-primary">Transcribe</button>
     </div>
     <div id="results" class="hidden">
+      <img id="thumbnail" src="" alt="YouTube Video Thumbnail" class="mb-4 max-w-2xl mx-auto">
       <div id="transcription" class="mb-4"></div>
       <button id="downloadTxtBtn" class="btn btn-secondary mr-2">Download TXT</button>
       <button id="downloadCsvBtn" class="btn btn-secondary">Download CSV</button>

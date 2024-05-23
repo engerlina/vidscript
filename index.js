@@ -20,14 +20,27 @@ app.post('/transcribe', async (req, res) => {
 
   try {
     const transcript = await getSubtitles({ videoID: videoId });
+
+    // Save the transcript to a TXT file
+    const txtFilePath = 'public/transcript.txt';
+    const transcriptText = transcript.map(entry => entry.text).join('\n');
+    fs.writeFileSync(txtFilePath, transcriptText);
+
+    // Save the transcript to a CSV file
+    const csvWriter = createCsvWriter({
+      path: 'public/transcript.csv',
+      header: [
+        { id: 'start', title: 'Start' },
+        { id: 'dur', title: 'Duration' },
+        { id: 'text', title: 'Text' }
+      ]
+    });
+    await csvWriter.writeRecords(transcript);
+
     res.json({ transcript });
   } catch (error) {
-    if (error.message === 'Could not find captions for video') {
-      res.status(404).json({ error: 'No captions found for the specified video.' });
-    } else {
-      console.error(`An error occurred: ${error.message}`);
-      res.status(500).json({ error: 'An error occurred while fetching the transcript.' });
-    }
+    console.error(`An error occurred: ${error.message}`);
+    res.status(500).json({ error: 'An error occurred while fetching the transcript.' });
   }
 });
 

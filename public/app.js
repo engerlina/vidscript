@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlInput = document.getElementById('urlInput');
     const transcribeBtn = document.getElementById('transcribeBtn');
     const results = document.getElementById('results');
+    const thumbnail = document.getElementById('thumbnail');
     const transcription = document.getElementById('transcription');
     const downloadTxtBtn = document.getElementById('downloadTxtBtn');
     const downloadCsvBtn = document.getElementById('downloadCsvBtn');
@@ -16,15 +17,28 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ url })
       });
       const data = await response.json();
+      thumbnail.src = `https://img.youtube.com/vi/${url.split('v=')[1]}/maxresdefault.jpg`;
       transcription.textContent = data.transcript.map(entry => entry.text).join('\n');
       results.classList.remove('hidden');
     });
   
-    downloadTxtBtn.addEventListener('click', () => {
-      window.location.href = '/download-txt';
+    downloadTxtBtn.addEventListener('click', async () => {
+      const response = await fetch('/download-txt');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'transcript.txt';
+      a.click();
     });
   
-    downloadCsvBtn.addEventListener('click', () => {
-      window.location.href = '/download-csv';
+    downloadCsvBtn.addEventListener('click', async () => {
+      const response = await fetch('/download-csv');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'transcript.csv';
+      a.click();
     });
   });
