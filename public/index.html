@@ -11,6 +11,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 10px;
     }
     .page-container {
       max-width: 800px;
@@ -38,9 +39,26 @@
       align-items: center;
       justify-content: center;
     }
+    .navbar, .footer {
+      background-color: #afafaf; /* Matching button color */
+      color: #fff;
+      border-radius: 8px; /* Rounded edges */
+    }
+    .navbar-container, .footer-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 10px 0;
+    }
     @media (max-width: 640px) {
       .page-container {
         margin: 0 20px;
+      }
+      .navbar-container, .footer-container {
+        margin: 0 20px;
+      }
+      .input-container {
+        flex-direction: column;
+        gap: 10px;
       }
       .button-container {
         flex-direction: column;
@@ -53,11 +71,16 @@
   </style>
 </head>
 <body>
+  <div class="navbar-container">
+    <div class="navbar">
+      <button class="btn btn-ghost text-xl text-white">Vidscript</button>
+    </div>
+  </div>
   <div class="page-container">
     <h1 class="text-center mb-8 custom-h1">Transcribe YouTube Videos</h1>
     <div class="mb-8 input-container">
-      <input id="urlInput" type="text" placeholder="Enter a YouTube URL" class="input input-bordered w-4/5 mr-2" />
-      <button id="transcribeBtn" class="btn btn-primary">Transcribe</button>
+      <input id="urlInput" type="text" placeholder="Enter a YouTube URL" class="input input-bordered w-full" />
+      <button id="transcribeBtn" class="btn bg-[#6366f1] text-white w-full sm:w-auto">Transcribe</button>
     </div>
     <div id="results" class="hidden">
       <img id="thumbnail" src="" alt="YouTube Video Thumbnail" class="mb-8 mx-auto">
@@ -75,6 +98,12 @@
       </div>
     </div>
   </div>
+  <div class="footer-container">
+    <footer class="footer footer-center p-4 bg-[#6366f1] text-white">
+      <aside>
+        <p>Copyright © 2024 - All rights reserved by Vertial Holdings Pty Ltd</p>
+      </aside>
+    </footer>
   <script src="app.js"></script>
 </body>
 </html>
