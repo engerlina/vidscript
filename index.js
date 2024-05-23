@@ -22,8 +22,12 @@ app.post('/transcribe', async (req, res) => {
     const transcript = await getSubtitles({ videoID: videoId });
     res.json({ transcript });
   } catch (error) {
-    console.error(`An error occurred: ${error.message}`);
-    res.status(500).json({ error: 'An error occurred while fetching the transcript.' });
+    if (error.message === 'Could not find captions for video') {
+      res.status(404).json({ error: 'No captions found for the specified video.' });
+    } else {
+      console.error(`An error occurred: ${error.message}`);
+      res.status(500).json({ error: 'An error occurred while fetching the transcript.' });
+    }
   }
 });
 
