@@ -20,22 +20,29 @@
     #thumbnail {
       border-radius: 30px;
     }
-    h1 {
-      font-size: 5rem;
+    .custom-h1 {
+      font-size: 48px; /* Adjust the font size as needed */
     }
   </style>
 </head>
 <body>
   <div class="page-container">
-    <h1 class="text-center font-bold mb-8">Transcribe YouTube Videos</h1>
+    <h1 class="text-center mb-8 custom-h1">Transcribe YouTube Videos</h1>
     <div class="mb-8 input-container">
-      <input id="urlInput" type="text" placeholder="Enter a YouTube URL" class="input input-bordered w-full mr-2" />
+      <input id="urlInput" type="text" placeholder="Enter a YouTube URL" class="input input-bordered w-4/5 mr-2" />
       <button id="transcribeBtn" class="btn btn-primary">Transcribe</button>
     </div>
     <div id="results" class="hidden">
       <img id="thumbnail" src="" alt="YouTube Video Thumbnail" class="mb-8 mx-auto">
+      <div class="text-center">
+        <button id="copyTranscriptionBtn" class="btn btn-secondary mr-2">Copy Transcription</button>
+        <button id="downloadTxtBtn" class="btn btn-secondary mr-2">Download TXT</button>
+        <button id="downloadCsvBtn" class="btn btn-secondary">Download CSV</button>
+      </div>
+      <h2 id="videoTitle" class="text-xl font-bold mb-4"></h2>
       <div id="transcription" class="mb-8 text-lg"></div>
       <div class="text-center">
+        <button id="copyTranscriptionBtn" class="btn btn-secondary mr-2">Copy Transcription</button>
         <button id="downloadTxtBtn" class="btn btn-secondary mr-2">Download TXT</button>
         <button id="downloadCsvBtn" class="btn btn-secondary">Download CSV</button>
       </div>
