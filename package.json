@@ -1,13 +1,17 @@
 {
-  "name": "nodejs-app",
+  "name": "youtube-video-transcription",
   "version": "1.0.0",
-  "description": "A minimal Node.js web application.",
+  "description": "A YouTube video transcription app.",
   "main": "index.js",
   "author": "alphasec",
   "license": "MIT",
-   "dependencies": {
-  },
   "scripts": {
     "start": "node index.js"
+  },
+  "keywords": [],
+  "dependencies": {
+    "csv-writer": "^1.6.0",
+    "express": "^4.19.2",
+    "youtube-captions-scraper": "^2.0.3"
   }
 }
