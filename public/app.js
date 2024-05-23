@@ -3,28 +3,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const transcribeBtn = document.getElementById('transcribeBtn');
     const results = document.getElementById('results');
     const thumbnail = document.getElementById('thumbnail');
-    const videoTitle = document.getElementById('videoTitle');
     const transcription = document.getElementById('transcription');
     const copyTranscriptionBtn = document.getElementById('copyTranscriptionBtn');
     const downloadTxtBtn = document.getElementById('downloadTxtBtn');
     const downloadCsvBtn = document.getElementById('downloadCsvBtn');
-  
+
+    const getYouTubeVideoId = (url) => {
+        const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+        const matches = url.match(regex);
+        console.log(`URL matches: ${matches}`);
+        return matches ? matches[1] : null;
+    };
+
     transcribeBtn.addEventListener('click', async () => {
       const url = urlInput.value;
-      const response = await fetch('/transcribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ url })
-      });
-      const data = await response.json();
-      thumbnail.src = `https://img.youtube.com/vi/${url.split('v=')[1]}/maxresdefault.jpg`;
-      videoTitle.textContent = data.title; // Set the video title
-      transcription.textContent = data.transcript.map(entry => entry.text).join('\n');
-      results.classList.remove('hidden');
+      console.log(`URL input: ${url}`);
+      const videoId = getYouTubeVideoId(url);
+      console.log(`Extracted video ID: ${videoId}`);
+      if (!videoId) {
+          alert('Invalid YouTube URL');
+          return;
+      }
+      try {
+        const response = await fetch('/transcribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url })
+        });
+        console.log(`Transcribe response status: ${response.status}`);
+        const data = await response.json();
+        console.log('Transcription data received:', data);
+
+        if (data.error) {
+          console.error('Error from server:', data.error);
+          alert('Error: ' + data.error);
+          return;
+        }
+
+        thumbnail.src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+        transcription.textContent = data.transcript.map(entry => entry.text).join('\n');
+        results.classList.remove('hidden');
+      } catch (error) {
+        console.error('An error occurred while fetching the transcription:', error);
+        alert('An error occurred while fetching the transcription');
+      }
     });
-  
+
     copyTranscriptionBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(transcription.textContent)
         .then(() => {
@@ -34,24 +60,32 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error('Failed to copy transcription:', error);
         });
     });
-  
+
     downloadTxtBtn.addEventListener('click', async () => {
-      const response = await fetch('/download-txt');
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'transcript.txt';
-      a.click();
+      try {
+        const response = await fetch('/download-txt');
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'transcript.txt';
+        a.click();
+      } catch (error) {
+        console.error('An error occurred while downloading the TXT file:', error);
+      }
     });
-  
+
     downloadCsvBtn.addEventListener('click', async () => {
-      const response = await fetch('/download-csv');
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'transcript.csv';
-      a.click();
+      try {
+        const response = await fetch('/download-csv');
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'transcript.csv';
+        a.click();
+      } catch (error) {
+        console.error('An error occurred while downloading the CSV file:', error);
+      }
     });
-  });
+});

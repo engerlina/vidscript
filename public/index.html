@@ -22,6 +22,7 @@
     }
     .custom-h1 {
       font-size: 48px; /* Increased font size */
+      font-weight: bold; /* Make the header bold */
     }
     .button-container {
       display: flex;
@@ -31,6 +32,11 @@
     .button-container button {
       flex: 1;
       margin-bottom: 0.5rem;
+    }
+    .vertical-center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     @media (max-width: 640px) {
       .page-container {
@@ -56,16 +62,16 @@
     <div id="results" class="hidden">
       <img id="thumbnail" src="" alt="YouTube Video Thumbnail" class="mb-8 mx-auto">
       <div class="text-center button-container">
-        <button id="copyTranscriptionBtn" class="btn btn-secondary">Copy Transcription</button>
-        <button id="downloadTxtBtn" class="btn btn-secondary">Download TXT</button>
-        <button id="downloadCsvBtn" class="btn btn-secondary">Download CSV</button>
+        <button id="copyTranscriptionBtn" class="btn btn-secondary">Copy Transcript</button>
+        <button id="downloadTxtBtn" class="btn btn-outline btn-secondary">Download TXT</button>
+        <button id="downloadCsvBtn" class="btn btn-outline btn-secondary">Download CSV</button>
       </div>
-      <h2 id="videoTitle" class="text-xl font-bold mb-4"></h2>
+      <h2 class="text-xl font-bold mb-4 vertical-center">Video Transcript</h2> <!-- Hardcoded title and vertically centered -->
       <div id="transcription" class="mb-8 text-lg"></div>
       <div class="text-center button-container">
-        <button id="copyTranscriptionBtn" class="btn btn-secondary">Copy Transcription</button>
-        <button id="downloadTxtBtn" class="btn btn-secondary">Download TXT</button>
-        <button id="downloadCsvBtn" class="btn btn-secondary">Download CSV</button>
+        <button id="copyTranscriptionBtn" class="btn btn-secondary">Copy Transcript</button>
+        <button id="downloadTxtBtn" class="btn btn-outline btn-secondary">Download TXT</button>
+        <button id="downloadCsvBtn" class="btn btn-outline btn-secondary">Download CSV</button>
       </div>
     </div>
   </div>

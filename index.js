@@ -14,9 +14,20 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
 
+const getYouTubeVideoId = (url) => {
+  const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const matches = url.match(regex);
+  return matches ? matches[1] : null;
+};
+
 app.post('/transcribe', async (req, res) => {
   const youtubeUrl = req.body.url;
-  const videoId = youtubeUrl.split('v=')[1];
+  const videoId = getYouTubeVideoId(youtubeUrl);
+
+  if (!videoId) {
+    console.error('Invalid video ID');
+    return res.status(400).json({ error: 'Invalid YouTube URL' });
+  }
 
   try {
     const transcript = await getSubtitles({ videoID: videoId });
