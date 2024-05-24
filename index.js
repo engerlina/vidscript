@@ -4,6 +4,8 @@ const path = require('path');
 const { getSubtitles } = require('youtube-captions-scraper');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const session = require('express-session');
+const cron = require('node-cron');
+const { exec } = require('child_process');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -98,6 +100,23 @@ app.get('/download-csv/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(TRANSCRIPTS_FOLDER, filename);
   res.download(filePath, filename);
+});
+
+// Scheduler: Run deleteOldTranscripts.js every hour
+cron.schedule('0 * * * *', () => {
+  console.log('Running deleteOldTranscripts.js script');
+
+  exec('node deleteOldTranscripts.js', (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error executing script: ${error.message}`);
+      return;
+    }
+    if (stderr) {
+      console.error(`Script stderr: ${stderr}`);
+      return;
+    }
+    console.log(`Script output: ${stdout}`);
+  });
 });
 
 app.listen(port, () => {
