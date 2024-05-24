@@ -1,7 +1,9 @@
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
 const { getSubtitles } = require('youtube-captions-scraper');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+const session = require('express-session');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -9,6 +11,19 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+app.use(session({
+  secret: '1f7f3c2d8e6c4b5a9d3c1e7f8b6a5d4csd433235gff',
+  resave: false,
+  saveUninitialized: true
+}));
+
+const MAX_USES_PER_DAY = 5; // Set the maximum number of uses per day
+const TRANSCRIPTS_FOLDER = 'transcripts';
+
+// Create the transcripts folder if it doesn't exist
+if (!fs.existsSync(TRANSCRIPTS_FOLDER)) {
+  fs.mkdirSync(TRANSCRIPTS_FOLDER);
+}
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
@@ -29,17 +44,32 @@ app.post('/transcribe', async (req, res) => {
     return res.status(400).json({ error: 'Invalid YouTube URL' });
   }
 
+  // Check the user's usage count
+  if (!req.session.usageCount) {
+    req.session.usageCount = 0;
+  }
+
+  if (req.session.usageCount >= MAX_USES_PER_DAY) {
+    return res.status(429).json({ error: 'Daily usage limit reached' });
+  }
+
   try {
     const transcript = await getSubtitles({ videoID: videoId });
 
+    // Generate unique filenames using user ID and timestamp
+    const userID = req.session.id;
+    const timestamp = Date.now();
+    const txtFilename = `transcript_${userID}_${timestamp}.txt`;
+    const csvFilename = `transcript_${userID}_${timestamp}.csv`;
+
     // Save the transcript to a TXT file
-    const txtFilePath = 'public/transcript.txt';
+    const txtFilePath = path.join(TRANSCRIPTS_FOLDER, txtFilename);
     const transcriptText = transcript.map(entry => entry.text).join('\n');
     fs.writeFileSync(txtFilePath, transcriptText);
 
     // Save the transcript to a CSV file
     const csvWriter = createCsvWriter({
-      path: 'public/transcript.csv',
+      path: path.join(TRANSCRIPTS_FOLDER, csvFilename),
       header: [
         { id: 'start', title: 'Start' },
         { id: 'dur', title: 'Duration' },
@@ -48,21 +78,26 @@ app.post('/transcribe', async (req, res) => {
     });
     await csvWriter.writeRecords(transcript);
 
-    res.json({ transcript });
+    // Increment the user's usage count
+    req.session.usageCount++;
+
+    res.json({ transcript, txtFilename, csvFilename });
   } catch (error) {
     console.error(`An error occurred: ${error.message}`);
     res.status(500).json({ error: 'An error occurred while fetching the transcript.' });
   }
 });
 
-app.get('/download-txt', (req, res) => {
-  const filePath = __dirname + '/public/transcript.txt';
-  res.download(filePath, 'transcript.txt');
+app.get('/download-txt/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(TRANSCRIPTS_FOLDER, filename);
+  res.download(filePath, filename);
 });
 
-app.get('/download-csv', (req, res) => {
-  const filePath = __dirname + '/public/transcript.csv';
-  res.download(filePath, 'transcript.csv');
+app.get('/download-csv/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(TRANSCRIPTS_FOLDER, filename);
+  res.download(filePath, filename);
 });
 
 app.listen(port, () => {
