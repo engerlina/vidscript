@@ -19,7 +19,7 @@ app.use(session({
   saveUninitialized: true
 }));
 
-const MAX_USES_PER_DAY = 5; // Set the maximum number of uses per day
+const MAX_USES_PER_DAY = 100; // Set the maximum number of uses per day
 const TRANSCRIPTS_FOLDER = 'transcripts';
 
 // Create the transcripts folder if it doesn't exist
