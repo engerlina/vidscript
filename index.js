@@ -5,6 +5,8 @@ const axios = require('axios');
 const { getSubtitles } = require('youtube-captions-scraper');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
+const { Pool } = require('pg');
 const cron = require('node-cron');
 const { exec } = require('child_process');
 const { ClerkExpressWithAuth } = require('@clerk/clerk-sdk-node');
@@ -14,25 +16,26 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-
-// app.js
 const languageMap = require('./languageMap');
 
-console.log(languageMap);
+// Configure PostgreSQL client
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
-console.log('Clerk Publishable Key:', process.env.CLERK_PUBLISHABLE_KEY);
-console.log('Clerk Secret Key:', process.env.CLERK_SECRET_KEY);
-
-const cors = require('cors');
-app.use(cors());
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+// Middleware for session handling using PostgreSQL
 app.use(session({
+  store: new pgSession({
+    pool: pool, // Connection pool
+    tableName: 'session', // Use another table-name than the default "session" one
+  }),
   secret: process.env.SESSION_SECRET || 'default-secret',
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // use secure cookies in production
+    maxAge: 1000 * 60 * 60 * 24 // 1 day
+  }
 }));
 
 const clerkMiddleware = ClerkExpressWithAuth({
@@ -42,6 +45,13 @@ const clerkMiddleware = ClerkExpressWithAuth({
 
 const MAX_USES_PER_DAY = 100;
 const TRANSCRIPTS_FOLDER = path.join(__dirname, 'transcripts');
+
+const cors = require('cors');
+app.use(cors());
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));

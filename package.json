@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "description": "A YouTube video transcription app.",
   "main": "index.js",
-  "author": "alphasec",
-  "license": "MIT",
   "scripts": {
     "start": "node index.js --production"
   },
@@ -18,6 +16,7 @@
     "@suejon/youtube-subtitles": "^0.4.2",
     "@tailwindcss/typography": "^0.5.13",
     "axios": "^1.7.2",
+    "connect-pg-simple": "^9.0.1",
     "cors": "^2.8.5",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.4.5",
@@ -25,6 +24,7 @@
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "node-cron": "^3.0.3",
+    "pg": "^8.11.5",
     "session": "^0.1.0",
     "youtube-caption-extractor": "^1.4.3",
     "youtube-captions-scraper": "^2.0.3",
