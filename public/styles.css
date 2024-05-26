@@ -54,8 +54,8 @@ body {
 }
 
 .navbar #sign-in-button {
-  color: #333;
-  background-color: white;
+  color: white;
+  background-color: #adadad;
   border: none;
 }
 
@@ -185,6 +185,16 @@ svg.fill-current {
   }
   .navbar-end .dropdown {
     display: block;
+  }
+  .navbar #sign-in-button {
+    color: #333;
+    background-color: white;
+    border: none;
+  }
+  .navbar #sign-up-button {
+    color: white;
+    background-color: gray;
+    border: 1px solid gray;
   }
 }
 
