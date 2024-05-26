@@ -217,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userAvatarImg = document.getElementById('userAvatarImg');
     const signOutButton = document.getElementById('sign-out-button');
     const profileLink = document.getElementById('profile-link');
+    const hamburgerMenu = document.getElementById('hamburgerMenu');
 
     if (profileLink) {
       profileLink.addEventListener('click', () => {
@@ -235,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
           // User is signed in
           userButtons.style.display = 'none';
           userAvatar.style.display = 'block';
+          hamburgerMenu.style.display = 'none';
 
           // Set the user's profile image URL
           userAvatarImg.src = user.imageUrl;
@@ -248,15 +250,13 @@ document.addEventListener('DOMContentLoaded', () => {
           // User is not signed in
           userButtons.style.display = 'block';
           userAvatar.style.display = 'none';
+          hamburgerMenu.style.display = 'block';
         }
       });
 
+      // Buttons for larger screens
       const signInButton = document.getElementById('sign-in-button');
       const signUpButton = document.getElementById('sign-up-button');
-
-      console.log('Sign-in button:', signInButton);
-      console.log('Sign-up button:', signUpButton);
-
       if (signInButton) {
         signInButton.addEventListener('click', () => {
           console.log('Sign-in button clicked');
@@ -265,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         console.warn('Sign-in button not found');
       }
-
       if (signUpButton) {
         signUpButton.addEventListener('click', () => {
           console.log('Sign-up button clicked');
@@ -273,6 +272,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       } else {
         console.warn('Sign-up button not found');
+      }
+
+      // Buttons for smaller screens (dropdown)
+      const dropdownSignInButton = document.getElementById('dropdown-sign-in-button');
+      const dropdownSignUpButton = document.getElementById('dropdown-sign-up-button');
+      if (dropdownSignInButton) {
+        dropdownSignInButton.addEventListener('click', () => {
+          console.log('Dropdown Sign-in button clicked');
+          window.Clerk.openSignIn();
+        });
+      } else {
+        console.warn('Dropdown Sign-in button not found');
+      }
+      if (dropdownSignUpButton) {
+        dropdownSignUpButton.addEventListener('click', () => {
+          console.log('Dropdown Sign-up button clicked');
+          window.Clerk.openSignUp();
+        });
+      } else {
+        console.warn('Dropdown Sign-up button not found');
       }
     }).catch((err) => {
       console.error('Error loading Clerk components:', err);

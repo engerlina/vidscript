@@ -186,12 +186,12 @@ svg.fill-current {
   .navbar-end .dropdown {
     display: block;
   }
-  .navbar #sign-in-button {
-    color: #333;
+  .navbar #dropdown-sign-in-button {
+    color: #1f2937;
     background-color: white;
     border: none;
   }
-  .navbar #sign-up-button {
+  .navbar #dropdown-sign-up-button {
     color: white;
     background-color: gray;
     border: 1px solid gray;

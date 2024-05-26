@@ -6,22 +6,33 @@
     </a>
   </div>
   <div class="navbar-end sm:hidden">
-    <div class="dropdown dropdown-end">
+    <div class="dropdown dropdown-end" id="hamburgerMenu">
       <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </div>
       <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52 right-0">
-        <li><a id="sign-in-button">Sign In</a></li>
-        <li><a id="sign-up-button">Sign Up</a></li>
+        <li><a id="dropdown-sign-in-button">Sign In</a></li>
+        <li><a id="dropdown-sign-up-button">Sign Up</a></li>
+      </ul>
+    </div>
+    <div class="dropdown dropdown-end" id="userAvatarDropdown" style="display: none;">
+      <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+        <div class="w-10 rounded-full">
+          <img alt="User Avatar" id="userAvatarImgSmall" src="" />
+        </div>
+      </div>
+      <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52 right-0" style="color: #333;">
+        <li><a id="profile-link-small">Profile</a></li>
+        <li><a id="sign-out-button-small">Logout</a></li>
       </ul>
     </div>
   </div>
   <div class="navbar-end hidden sm:flex">
     <div id="userButtons">
-      <button id="sign-in-button" class="btn">Sign In</button>
-      <button id="sign-up-button" class="btn">Sign Up</button>
+      <button id="sign-in-button" class="btn btn-sign-in">Sign In</button>
+      <button id="sign-up-button" class="btn btn-sign-up">Sign Up</button>
     </div>
     <div id="userAvatar" class="dropdown dropdown-end" style="display: none;">
       <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
