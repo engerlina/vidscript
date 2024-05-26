@@ -10,11 +10,24 @@
   },
   "keywords": [],
   "dependencies": {
+    "@clerk/clerk-js": "^5.5.1",
+    "@clerk/clerk-react": "^5.2.1",
+    "@clerk/clerk-sdk-node": "^5.0.9",
+    "@clerk/nextjs": "^5.1.2",
+    "@mdx-js/mdx": "^3.0.1",
+    "@suejon/youtube-subtitles": "^0.4.2",
     "@tailwindcss/typography": "^0.5.13",
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
     "csv-writer": "^1.6.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "node-cron": "^3.0.3",
-    "youtube-captions-scraper": "^2.0.3"
+    "session": "^0.1.0",
+    "youtube-caption-extractor": "^1.4.3",
+    "youtube-captions-scraper": "^2.0.3",
+    "youtube-transcript": "^1.2.1"
   }
 }

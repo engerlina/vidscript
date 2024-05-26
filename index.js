@@ -1,34 +1,69 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 const { getSubtitles } = require('youtube-captions-scraper');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const session = require('express-session');
 const cron = require('node-cron');
 const { exec } = require('child_process');
+const { ClerkExpressWithAuth } = require('@clerk/clerk-sdk-node');
+require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+
+// app.js
+const languageMap = require('./languageMap');
+
+console.log(languageMap);
+
+console.log('Clerk Publishable Key:', process.env.CLERK_PUBLISHABLE_KEY);
+console.log('Clerk Secret Key:', process.env.CLERK_SECRET_KEY);
+
+const cors = require('cors');
+app.use(cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-  secret: '1f7f3c2d8e6c4b5a9d3c1e7f8b6a5d4csd433235gff',
+  secret: process.env.SESSION_SECRET || 'default-secret',
   resave: false,
   saveUninitialized: true
 }));
 
-const MAX_USES_PER_DAY = 100; // Set the maximum number of uses per day
-const TRANSCRIPTS_FOLDER = 'transcripts';
+const clerkMiddleware = ClerkExpressWithAuth({
+  publicKey: process.env.CLERK_PUBLISHABLE_KEY,
+  secretKey: process.env.CLERK_SECRET_KEY,
+});
 
-// Create the transcripts folder if it doesn't exist
+const MAX_USES_PER_DAY = 100;
+const TRANSCRIPTS_FOLDER = path.join(__dirname, 'transcripts');
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 if (!fs.existsSync(TRANSCRIPTS_FOLDER)) {
   fs.mkdirSync(TRANSCRIPTS_FOLDER);
 }
 
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
+  res.render('index', { url: req.protocol + '://' + req.get('host') + req.originalUrl });
+});
+
+app.get('/privacy-policy', (req, res) => {
+  res.render('privacy-policy', { url: req.protocol + '://' + req.get('host') + req.originalUrl });
+});
+
+app.get('/terms-of-service', (req, res) => {
+  res.render('terms-of-service', { url: req.protocol + '://' + req.get('host') + req.originalUrl });
+});
+
+app.get('/test', (req, res) => {
+  res.render('test', { url: req.protocol + '://' + req.get('host') + req.originalUrl });
 });
 
 const getYouTubeVideoId = (url) => {
@@ -37,39 +72,38 @@ const getYouTubeVideoId = (url) => {
   return matches ? matches[1] : null;
 };
 
-app.post('/transcribe', async (req, res) => {
-  const youtubeUrl = req.body.url;
-  const videoId = getYouTubeVideoId(youtubeUrl);
-
-  if (!videoId) {
-    console.error('Invalid video ID');
-    return res.status(400).json({ error: 'Invalid YouTube URL' });
-  }
-
-  // Check the user's usage count
-  if (!req.session.usageCount) {
-    req.session.usageCount = 0;
-  }
-
-  if (req.session.usageCount >= MAX_USES_PER_DAY) {
-    return res.status(429).json({ error: 'Daily usage limit reached' });
-  }
-
+const getAvailableLanguages = async (videoId) => {
   try {
-    const transcript = await getSubtitles({ videoID: videoId });
+    const response = await axios.get(`https://www.googleapis.com/youtube/v3/captions`, {
+      params: {
+        part: 'snippet',
+        videoId: videoId,
+        key: YOUTUBE_API_KEY
+      }
+    });
 
-    // Generate unique filenames using user ID and timestamp
-    const userID = req.session.id;
-    const timestamp = Date.now();
-    const txtFilename = `transcript_${userID}_${timestamp}.txt`;
-    const csvFilename = `transcript_${userID}_${timestamp}.csv`;
+    const captions = response.data.items;
+    const availableLanguages = captions.map(caption => {
+      const lang = caption.snippet.language;
+      return {
+        code: lang,
+        name: languageMap[lang] || lang
+      };
+    });
 
-    // Save the transcript to a TXT file
-    const txtFilePath = path.join(TRANSCRIPTS_FOLDER, txtFilename);
-    const transcriptText = transcript.map(entry => entry.text).join('\n');
-    fs.writeFileSync(txtFilePath, transcriptText);
+    return availableLanguages;
+  } catch (error) {
+    console.error(`An error occurred while fetching available languages: ${error.message}`);
+    return [];
+  }
+};
 
-    // Save the transcript to a CSV file
+const getTranscriptAndSave = async (videoId, selectedLanguage, identifier) => {
+  try {
+    const subtitles = await getSubtitles({ videoID: videoId, lang: selectedLanguage });
+    console.log('Subtitles:', subtitles);
+
+    const csvFilename = `transcript_${identifier}_${videoId}_${selectedLanguage}.csv`;
     const csvWriter = createCsvWriter({
       path: path.join(TRANSCRIPTS_FOLDER, csvFilename),
       header: [
@@ -78,31 +112,106 @@ app.post('/transcribe', async (req, res) => {
         { id: 'text', title: 'Text' }
       ]
     });
-    await csvWriter.writeRecords(transcript);
+    await csvWriter.writeRecords(subtitles);
 
-    // Increment the user's usage count
-    req.session.usageCount++;
+    const txtFilename = `transcript_${identifier}_${videoId}_${selectedLanguage}.txt`;
+    const txtFilePath = path.join(TRANSCRIPTS_FOLDER, txtFilename);
+    const subtitlesText = subtitles.map(entry => entry.text).join('\n');
+    fs.writeFileSync(txtFilePath, subtitlesText);
 
-    res.json({ transcript, txtFilename, csvFilename });
+    console.log(`Subtitles saved to ${csvFilename} and ${txtFilename}`);
+    return { txtFilename, csvFilename, subtitlesText };
   } catch (error) {
     console.error(`An error occurred: ${error.message}`);
-    res.status(500).json({ error: 'An error occurred while fetching the transcript.' });
+    throw error;
+  }
+};
+
+app.post('/transcribe', clerkMiddleware, async (req, res) => {
+  const youtubeUrl = req.body.url;
+  const videoId = getYouTubeVideoId(youtubeUrl);
+
+  if (!videoId) {
+    console.error('Invalid video ID');
+    return res.status(400).json({ error: 'Invalid YouTube URL' });
+  }
+
+  const isLoggedIn = !!req.auth.userId;
+  const identifier = isLoggedIn ? req.auth.userId : req.sessionID;
+
+  if (!isLoggedIn && req.session.usageCount >= MAX_USES_PER_DAY) {
+    return res.status(429).json({ error: 'Daily usage limit reached' });
+  }
+
+  try {
+    const availableLanguages = await getAvailableLanguages(videoId);
+    console.log('Available languages:', availableLanguages);
+
+    if (availableLanguages.length === 0) {
+      console.log(`No captions found for video: ${videoId}`);
+      return res.status(404).json({ error: 'No captions found for the video' });
+    }
+
+    if (availableLanguages.length === 1) {
+      const selectedLanguage = availableLanguages[0].code;
+      const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier);
+
+      if (!isLoggedIn) {
+        req.session.usageCount++;
+      }
+
+      res.json({
+        languageCodes: availableLanguages,
+        savedTranscripts: [{ languageCode: selectedLanguage, txtFilename, csvFilename, subtitlesText }]
+      });
+    } else {
+      res.json({ languageCodes: availableLanguages, savedTranscripts: [] });
+    }
+  } catch (error) {
+    console.error(`An error occurred: ${error.message}`);
+    res.status(500).json({ error: 'An error occurred while fetching the subtitles.' });
   }
 });
 
-app.get('/download-txt/:filename', (req, res) => {
+app.get('/transcribe/:videoId/:lang', clerkMiddleware, async (req, res) => {
+  const videoId = req.params.videoId;
+  const selectedLanguage = req.params.lang;
+  const isLoggedIn = !!req.auth.userId;
+  const identifier = isLoggedIn ? req.auth.userId : req.sessionID;
+
+  try {
+    const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier);
+
+    if (!isLoggedIn) {
+      req.session.usageCount++;
+    }
+
+    res.json({
+      languageCodes: [{ code: selectedLanguage, name: getLanguageName(selectedLanguage) }],
+      savedTranscripts: [{ languageCode: selectedLanguage, txtFilename, csvFilename, subtitlesText }]
+    });
+  } catch (error) {
+    console.error(`An error occurred: ${error.message}`);
+    res.status(500).json({ error: 'An error occurred while fetching the subtitles.' });
+  }
+});
+
+const getLanguageName = (code) => {
+  return languageMap[code] || code;
+};
+
+app.get('/download-txt/:filename', clerkMiddleware, (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(TRANSCRIPTS_FOLDER, filename);
   res.download(filePath, filename);
 });
 
-app.get('/download-csv/:filename', (req, res) => {
+app.get('/download-csv/:filename', clerkMiddleware, (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(TRANSCRIPTS_FOLDER, filename);
   res.download(filePath, filename);
 });
 
-// Scheduler: Run deleteOldTranscripts.js every hour
 cron.schedule('0 * * * *', () => {
   console.log('Running deleteOldTranscripts.js script');
 
@@ -119,6 +228,10 @@ cron.schedule('0 * * * *', () => {
   });
 });
 
+app.get('/modal', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'modal.html'));
+});
+
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`Server is running on http://localhost:${port}`);
 });

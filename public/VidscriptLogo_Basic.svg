@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-1, .cls-2 {
+        stroke-width: 0px;
+      }
+
+      .cls-2 {
+        fill: #cb2027;
+      }
+    </style>
+  </defs>
+  <g id="Layer_2" data-name="Layer 2">
+    <rect class="cls-1" x="145.6" y="196.9" width="229" height="142.5"/>
+  </g>
+  <g id="Capa_1" data-name="Capa 1">
+    <path class="cls-2" d="M398.4,445.7c25.4-4.6,45.5-18,52.3-35,12.3-30.9,12.3-154.7,12.3-154.7,0,0,0-123.8-12.3-154.7-6.8-17-26.8-30.4-52.3-35-46.1-8.3-142.4-8.3-142.4-8.3,0,0-96.2,0-142.4,8.3-25.4,4.6-45.5,18-52.3,35-12.3,30.9-12.3,154.7-12.3,154.7,0,0,0,123.8,12.3,154.7,6.8,17,26.8,30.4,52.3,35,46.1,8.3,142.4,8.3,142.4,8.3,0,0,96.2,0,142.4-8.3ZM168.6,215.5h174.8s-87.4,103.5-87.4,103.5l-87.4-103.5Z"/>
+    <image width="210" height="93" transform="translate(-271 58)" xlink:href="Vidscript_Logo_Basic-1.png"/>
+  </g>
+</svg>

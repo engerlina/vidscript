@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('header', { title: "Privacy Policy - Vidscript", description: "Read our privacy policy.", url: url }) %>
+  <head>
+    <style>
+      .policy-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        line-height: 1.6;
+      }
+      .policy-container h2 {
+        margin-top: 20px;
+      }
+      .policy-container p {
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <%- include('navbar') %>
+      <div class="page-container">
+        <h1 class="text-center mb-8 custom-h1">Privacy Policy</h1>
+        <div class="policy-container">
+          <button class="btn">
+            <span class="loading loading-spinner"></span>
+            loading
+          </button>
+          <button class="btn btn-square">
+            <span class="loading loading-spinner"></span>
+          </button>
+          <button class="btn">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+            Button
+          </button>
+        </div>
+      </div>
+    <%- include('footer') %>
+    </div>
+  </body>
+</html>

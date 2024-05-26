@@ -1,0 +1,30 @@
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= typeof title !== 'undefined' ? title : 'Vidscript - Transcribe YouTube Videos' %></title>
+  <meta name="description" content="<%= typeof description !== 'undefined' ? description : 'A free resource to transcribe YouTube videos in any language that captions or transcriptions are available for' %>">
+
+  <!-- Open Graph Tags -->
+  <meta property="og:title" content="<%= typeof title !== 'undefined' ? title : 'Vidscript - Transcribe YouTube Videos' %>" />
+  <meta property="og:description" content="<%= typeof description !== 'undefined' ? description : 'A free resource to transcribe YouTube videos in any language that captions or transcriptions are available for' %>" />
+  <meta property="og:image" content="/images/vidscript-opengraph.png" />
+  <meta property="og:url" content="<%= typeof url !== 'undefined' ? url : '' %>" />
+  <meta property="og:type" content="website" />
+
+  <!-- Canonical Link -->
+  <link rel="canonical" href="<%= typeof url !== 'undefined' ? url : '' %>" />
+
+  <!-- Favicon -->
+  <link href="/favicon.ico" rel="icon" type="image/x-icon" />
+
+  <!-- CSS and JS Links -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.6/dist/full.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tailwindcss/typography@latest/dist/typography.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+
+  <!-- Tracking Code -->
+  <script defer src="https://analytics.vertial.com/script.js" data-website-id="140101ed-5163-4b15-9d63-f6c5d29cc8a0"></script>
+</head>
