@@ -43,6 +43,11 @@ const clerkMiddleware = ClerkExpressWithAuth({
   secretKey: process.env.CLERK_SECRET_KEY,
 });
 
+app.use((req, res, next) => {
+  res.locals.clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY;
+  next();
+});
+
 const MAX_USES_PER_DAY = 100;
 const TRANSCRIPTS_FOLDER = path.join(__dirname, 'transcripts');
 

@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Clerk initialization
-  const frontendApi = 'pk_live_Y2xlcmsudmlkc2NyaXB0LmNvJA';
+  const frontendApi = window.CLERK_PUBLISHABLE_KEY;
 
   console.log('Loading Clerk with frontend API:', frontendApi);
 
