@@ -236,12 +236,20 @@ document.addEventListener('DOMContentLoaded', () => {
           // User is signed in
           userButtons.style.display = 'none';
           userAvatar.style.display = 'block';
+          userAvatarDropdown.style.display = 'block';
           hamburgerMenu.style.display = 'none';
-
+      
           // Set the user's profile image URL
           userAvatarImg.src = user.imageUrl;
-
+          userAvatarImgSmall.src = user.imageUrl;
+      
           signOutButton.addEventListener('click', () => {
+            window.Clerk.signOut().then(() => {
+              location.reload();
+            });
+          });
+      
+          signOutButtonSmall.addEventListener('click', () => {
             window.Clerk.signOut().then(() => {
               location.reload();
             });
@@ -250,6 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
           // User is not signed in
           userButtons.style.display = 'block';
           userAvatar.style.display = 'none';
+          userAvatarDropdown.style.display = 'none';
           hamburgerMenu.style.display = 'block';
         }
       });

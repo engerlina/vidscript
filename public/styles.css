@@ -165,36 +165,48 @@ svg.fill-current {
   .page-container {
     margin: 0 20px;
   }
+
   .input-container {
     flex-direction: column;
     gap: 10px;
   }
+
   .button-container {
     flex-direction: column;
     align-items: center;
   }
+
   .button-container button {
     width: 100%;
   }
+
   .footer-content {
     flex-direction: column;
   }
+
   .email {
     margin-left: 0;
     margin-top: 5px;
   }
+
   .navbar-end .dropdown {
     display: block;
   }
+
   .navbar #dropdown-sign-in-button {
     color: #1f2937;
     background-color: white;
     border: none;
   }
+
   .navbar #dropdown-sign-up-button {
     color: white;
     background-color: gray;
     border: 1px solid gray;
+  }
+
+  .navbar-end .hidden {
+    display: none;
   }
 }
 
