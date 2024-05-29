@@ -249,11 +249,19 @@ document.addEventListener('DOMContentLoaded', () => {
             });
           });
       
+          const signOutButtonSmall = document.getElementById('sign-out-button-small');
           signOutButtonSmall.addEventListener('click', () => {
             window.Clerk.signOut().then(() => {
               location.reload();
             });
           });
+      
+          const profileLinkSmall = document.getElementById('profile-link-small');
+          if (profileLinkSmall) {
+            profileLinkSmall.addEventListener('click', () => {
+              window.Clerk.openUserProfile();
+            });
+          }
         } else {
           // User is not signed in
           userButtons.style.display = 'block';
