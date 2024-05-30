@@ -163,7 +163,7 @@ app.post('/transcribe', clerkMiddleware, async (req, res) => {
   const identifier = isLoggedIn ? req.auth.userId : req.sessionID;
 
   if (!isLoggedIn && req.session.usageCount >= MAX_USES_PER_DAY) {
-    return res.status(429).json({ error: 'Daily usage limit reached' });
+    return res.status(429).json({ error: 'Daily maximum of 100 uses, please Sign up for unlimited uses' });
   }
 
   try {
