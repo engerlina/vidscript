@@ -13,6 +13,14 @@ const { ClerkExpressWithAuth } = require('@clerk/clerk-sdk-node');
 require('dotenv').config();
 
 const app = express();
+
+app.use((req, res, next) => {
+  if (req.headers.host === 'vidscript.co') {
+    return res.redirect(301, 'https://www.vidscript.co' + req.url);
+  }
+  next();
+});
+
 const port = process.env.PORT || 3000;
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
