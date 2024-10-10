@@ -56,6 +56,20 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get(
+  '/user/email',
+  ClerkExpressRequireAuth(),
+  async (req, res) => {
+    try {
+      const user = req.auth.user;
+      const email = user.email_addresses.find(e => e.id === user.primary_email_address_id).email;
+      res.json({ email });
+    } catch (error) {
+      res.status(500).send('An error occurred: ' + error.message);
+    }
+  }
+);
+
 const MAX_USES_PER_DAY = 100;
 const TRANSCRIPTS_FOLDER = path.join(__dirname, 'transcripts');
 
