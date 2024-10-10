@@ -10,7 +10,7 @@
   "dependencies": {
     "@clerk/clerk-js": "^5.5.1",
     "@clerk/clerk-react": "^5.2.1",
-    "@clerk/clerk-sdk-node": "^5.0.9",
+    "@clerk/clerk-sdk-node": "^5.0.10",
     "@clerk/nextjs": "^5.1.2",
     "@mdx-js/mdx": "^3.0.1",
     "@suejon/youtube-subtitles": "^0.4.2",

@@ -1,3 +1,5 @@
+require('dotenv').config();
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -9,10 +11,16 @@ const pgSession = require('connect-pg-simple')(session);
 const { Pool } = require('pg');
 const cron = require('node-cron');
 const { exec } = require('child_process');
-const { ClerkExpressWithAuth } = require('@clerk/clerk-sdk-node');
+const { ClerkExpressWithAuth, users } = require('@clerk/clerk-sdk-node');
+
+
 require('dotenv').config();
 
 const app = express();
+
+// Use the ClerkExpressWithAuth middleware for lax authentication
+app.use(ClerkExpressWithAuth({ secretKey: process.env.CLERK_SECRET_KEY }));
+app.use(ClerkExpressRequireAuth({ secretKey: process.env.CLERK_SECRET_KEY }));
 
 app.use((req, res, next) => {
   if (req.headers.host === 'vidscript.co') {
@@ -135,12 +143,10 @@ const getAvailableLanguages = async (videoId) => {
   }
 };
 
-const getTranscriptAndSave = async (videoId, selectedLanguage, identifier) => {
+const getTranscriptAndSave = async (videoId, selectedLanguage, identifier, isLoggedIn) => {
   try {
     const subtitles = await getSubtitles({ videoID: videoId, lang: selectedLanguage });
-    console.log('Subtitles:', subtitles);
-
-    const csvFilename = `transcript_${identifier}_${videoId}_${selectedLanguage}.csv`;
+    const csvFilename = `transcript_${isLoggedIn ? 'user_' + identifier : identifier}_${videoId}_${selectedLanguage}.csv`;
     const csvWriter = createCsvWriter({
       path: path.join(TRANSCRIPTS_FOLDER, csvFilename),
       header: [
@@ -151,7 +157,7 @@ const getTranscriptAndSave = async (videoId, selectedLanguage, identifier) => {
     });
     await csvWriter.writeRecords(subtitles);
 
-    const txtFilename = `transcript_${identifier}_${videoId}_${selectedLanguage}.txt`;
+    const txtFilename = `transcript_${isLoggedIn ? 'user_' + identifier : identifier}_${videoId}_${selectedLanguage}.txt`;
     const txtFilePath = path.join(TRANSCRIPTS_FOLDER, txtFilename);
     const subtitlesText = subtitles.map(entry => entry.text).join('\n');
     fs.writeFileSync(txtFilePath, subtitlesText);
@@ -164,7 +170,26 @@ const getTranscriptAndSave = async (videoId, selectedLanguage, identifier) => {
   }
 };
 
-app.post('/transcribe', clerkMiddleware, async (req, res) => {
+// Test route to verify authentication
+app.get('/test-auth', ClerkExpressRequireAuth(), (req, res) => {
+  console.log('Request auth object:', req.auth);
+  res.json({ auth: req.auth });
+});
+
+// Route to fetch user details
+app.get('/user-details', ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const user = await clerkClient.users.getUser(userId);
+    res.json(user);
+  } catch (error) {
+    console.error('Error retrieving user details:', error);
+    res.status(500).json({ error: 'Error retrieving user details' });
+  }
+});
+
+// Transcribe route
+app.post('/transcribe', ClerkExpressRequireAuth(), async (req, res) => {
   const youtubeUrl = req.body.url;
   const videoId = getYouTubeVideoId(youtubeUrl);
 
@@ -173,8 +198,36 @@ app.post('/transcribe', clerkMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'Invalid YouTube URL' });
   }
 
-  const isLoggedIn = !!req.auth.userId;
-  const identifier = isLoggedIn ? req.auth.userId : req.sessionID;
+  console.log('Request auth object:', req.auth);
+
+  const isLoggedIn = !!req.auth?.userId;
+  let identifier = req.sessionID;
+  let userIdentifier = req.sessionID;
+
+  if (isLoggedIn) {
+    try {
+      console.log('User is logged in. Fetching user details...');
+      const userId = req.auth.userId;
+      const user = await clerkClient.users.getUser(userId);
+      console.log('User details:', user);
+      const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
+      console.log('Primary email:', primaryEmail);
+      if (primaryEmail) {
+        userIdentifier = primaryEmail.emailAddress;
+        identifier = userIdentifier;
+        console.log('User identifier set to:', userIdentifier);
+      } else {
+        console.log('Primary email not found');
+      }
+    } catch (error) {
+      console.error('An error occurred while retrieving user email:', error);
+      // Fallback to using req.sessionID as identifier
+      identifier = req.sessionID;
+      userIdentifier = req.sessionID;
+    }
+  } else {
+    console.log('User is not logged in');
+  }
 
   if (!isLoggedIn && req.session.usageCount >= MAX_USES_PER_DAY) {
     return res.status(429).json({ error: 'Daily maximum of 100 uses, please Sign up for unlimited uses' });
@@ -197,6 +250,13 @@ app.post('/transcribe', clerkMiddleware, async (req, res) => {
         req.session.usageCount++;
       }
 
+      // Store the transcription details in the database
+      const transcriptFilename = path.parse(txtFilename).name;
+      await pool.query(
+        'INSERT INTO transcriptions (url, user_identifier, request_datetime, transcript_filename) VALUES ($1, $2, $3, $4)',
+        [youtubeUrl, userIdentifier, new Date(), transcriptFilename]
+      );
+
       res.json({
         languageCodes: availableLanguages,
         savedTranscripts: [{ languageCode: selectedLanguage, txtFilename, csvFilename, subtitlesText }]
@@ -217,7 +277,7 @@ app.get('/transcribe/:videoId/:lang', clerkMiddleware, async (req, res) => {
   const identifier = isLoggedIn ? req.auth.userId : req.sessionID;
 
   try {
-    const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier);
+    const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier, isLoggedIn);
 
     if (!isLoggedIn) {
       req.session.usageCount++;
