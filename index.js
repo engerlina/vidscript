@@ -116,7 +116,7 @@ app.get(
 );
 
 // Updated rate limits
-const FREE_USER_MAX_USES_PER_DAY = 2;
+const FREE_USER_MAX_USES_PER_DAY = 5;
 const LOGGED_IN_USER_MAX_USES_PER_DAY = 20;
 const TRANSCRIPTS_FOLDER = path.join(__dirname, 'transcripts');
 
@@ -773,6 +773,14 @@ app.get('/debug-session', (req, res) => {
   
   console.log('[DEBUG] Session info:', sessionInfo);
   res.json(sessionInfo);
+});
+
+// Add an endpoint to get the usage limits
+app.get('/usage-limits', (req, res) => {
+  res.json({
+    freeUserLimit: FREE_USER_MAX_USES_PER_DAY,
+    loggedInUserLimit: LOGGED_IN_USER_MAX_USES_PER_DAY
+  });
 });
 
 app.listen(port, () => {

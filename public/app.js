@@ -15,8 +15,37 @@ document.addEventListener('DOMContentLoaded', () => {
   // Store CSRF token
   let csrfToken = '';
 
+  // Store usage limits
+  let usageLimits = {
+    freeUserLimit: 2,
+    loggedInUserLimit: 3
+  };
+
   // Fetch CSRF token on page load
   fetchCsrfToken();
+
+  // Fetch usage limits on page load
+  function fetchUsageLimits() {
+    fetch('/usage-limits', {
+      credentials: 'include'
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        usageLimits = data;
+        console.log('[INFO] Usage limits fetched:', usageLimits);
+      })
+      .catch(error => {
+        console.error('[ERROR] Failed to fetch usage limits:', error);
+      });
+  }
+
+  // Fetch usage limits on page load
+  fetchUsageLimits();
 
   // Function to fetch CSRF token
   function fetchCsrfToken() {
@@ -224,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 <div>
                   <h3 class="font-bold">Rate Limit Reached</h3>
-                  <div class="text-xs">Daily maximum of 2 uses for free accounts. Please sign up for more uses (3 per day).</div>
+                  <div class="text-xs">Daily maximum of ${usageLimits.freeUserLimit} uses for free accounts. Please sign up for more uses (${usageLimits.loggedInUserLimit} per day).</div>
                 </div>
               </div>
               ${!window.Clerk?.user ? '<div class="sign-in-button"><button id="signInBtn" class="btn btn-sm btn-primary">SIGN IN FOR MORE USES</button></div>' : ''}
@@ -633,6 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userAvatarDropdown = document.getElementById('userAvatarDropdown');
     const userAvatarImg = document.getElementById('userAvatarImg');
     const userAvatarImgSmall = document.getElementById('userAvatarImgSmall');
+    const hamburgerMenu = document.getElementById('hamburgerMenu');
     
     if (user) {
       // User is signed in
@@ -650,6 +680,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // Show user avatar in mobile dropdown
       if (userAvatarDropdown) {
         userAvatarDropdown.style.display = 'block';
+      }
+      
+      // Hide hamburger menu on small screens when user is signed in
+      if (hamburgerMenu) {
+        hamburgerMenu.style.display = 'none';
       }
       
       // Set user avatar image
@@ -685,6 +720,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // Hide user avatar in mobile dropdown
       if (userAvatarDropdown) {
         userAvatarDropdown.style.display = 'none';
+      }
+      
+      // Show hamburger menu on small screens when user is signed out
+      if (hamburgerMenu) {
+        hamburgerMenu.style.display = 'block';
       }
     }
   }
