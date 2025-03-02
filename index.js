@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
+const { clerkMiddleware, requireAuth, getAuth, clerkClient } = require('@clerk/express');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -11,17 +11,40 @@ const pgSession = require('connect-pg-simple')(session);
 const { Pool } = require('pg');
 const cron = require('node-cron');
 const { exec } = require('child_process');
-const { ClerkExpressWithAuth, users, clerkClient } = require('@clerk/clerk-sdk-node');
 
 const app = express();
 
-// Use the ClerkExpressWithAuth middleware for lax authentication
-app.use(ClerkExpressWithAuth({ secretKey: process.env.CLERK_SECRET_KEY }));
+// Use the new clerkMiddleware instead of ClerkExpressWithAuth
+app.use(clerkMiddleware());
 
 app.use((req, res, next) => {
   if (req.headers.host === 'vidscript.co') {
     return res.redirect(301, 'https://www.vidscript.co' + req.url);
   }
+  next();
+});
+
+// Middleware to ensure the publishable key is available to all views
+app.use((req, res, next) => {
+  // Get the publishable key from environment variables
+  const publishableKey = process.env.CLERK_PUBLISHABLE_KEY?.trim();
+  
+  // Log the key for debugging
+  console.log("Setting Clerk publishable key:", publishableKey);
+  console.log("Trimmed key:", publishableKey);
+  console.log("Publishable key length:", publishableKey?.length);
+  console.log("Publishable key first 10 chars:", publishableKey?.substring(0, 10));
+  console.log("Is key valid format:", publishableKey?.startsWith("pk_"));
+  
+  // Validate the key
+  if (!publishableKey) {
+    console.warn("Missing Clerk publishable key. Authentication will not work.");
+  } else if (!publishableKey.startsWith("pk_")) {
+    console.warn("Invalid Clerk publishable key format. Key should start with 'pk_'.");
+  }
+  
+  // Make the key available to all views
+  res.locals.clerkPublishableKey = publishableKey;
   next();
 });
 
@@ -58,44 +81,14 @@ app.use((req, res, next) => {
   next();
 });
 
-const clerkMiddleware = ClerkExpressWithAuth({
-  publicKey: process.env.CLERK_PUBLISHABLE_KEY,
-  secretKey: process.env.CLERK_SECRET_KEY,
-});
-
-// Ensure the publishable key is available to all views
-app.use((req, res, next) => {
-  // Log the key to verify it's being set correctly
-  console.log('Setting Clerk publishable key:', process.env.CLERK_PUBLISHABLE_KEY);
-  
-  // Make sure we're passing a valid string, not undefined
-  if (process.env.CLERK_PUBLISHABLE_KEY) {
-    // Ensure the key is properly trimmed and doesn't have any whitespace
-    res.locals.clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY.trim();
-    console.log('Trimmed key:', res.locals.clerkPublishableKey);
-    
-    // Validate the key format (should start with pk_)
-    if (!res.locals.clerkPublishableKey.startsWith('pk_')) {
-      console.warn('WARNING: Clerk publishable key does not start with "pk_". This may cause authentication issues.');
-    }
-    
-    // Log key length to help with debugging
-    console.log('Publishable key length:', res.locals.clerkPublishableKey.length);
-  } else {
-    console.warn('CLERK_PUBLISHABLE_KEY environment variable is not set');
-    res.locals.clerkPublishableKey = ''; // Set to empty string to avoid undefined
-  }
-  
-  next();
-});
-
 app.get(
   '/user/email',
-  ClerkExpressRequireAuth(),
+  requireAuth(),
   async (req, res) => {
     try {
-      const user = req.auth.user;
-      const email = user.email_addresses.find(e => e.id === user.primary_email_address_id).email;
+      const { userId } = getAuth(req);
+      const user = await clerkClient.users.getUser(userId);
+      const email = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId).emailAddress;
       res.json({ email });
     } catch (error) {
       res.status(500).send('An error occurred: ' + error.message);
@@ -200,15 +193,16 @@ const getTranscriptAndSave = async (videoId, selectedLanguage, identifier, isLog
 };
 
 // Test route to verify authentication
-app.get('/test-auth', ClerkExpressRequireAuth(), (req, res) => {
-  console.log('Request auth object:', req.auth);
-  res.json({ auth: req.auth });
+app.get('/test-auth', requireAuth(), (req, res) => {
+  const auth = getAuth(req);
+  console.log('Request auth object:', auth);
+  res.json({ auth });
 });
 
 // Route to fetch user details
-app.get('/user-details', ClerkExpressRequireAuth(), async (req, res) => {
+app.get('/user-details', requireAuth(), async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const { userId } = getAuth(req);
     const user = await clerkClient.users.getUser(userId);
     res.json(user);
   } catch (error) {
@@ -227,16 +221,17 @@ app.post('/transcribe', async (req, res) => {
     return res.status(400).json({ error: 'Invalid YouTube URL' });
   }
 
-  console.log('Request auth object:', req.auth);
+  const auth = getAuth(req);
+  console.log('Request auth object:', auth);
 
-  const isLoggedIn = !!req.auth?.userId;
+  const isLoggedIn = !!auth?.userId;
   let identifier = req.sessionID;
   let userIdentifier = req.sessionID;
 
   if (isLoggedIn) {
     try {
       console.log('User is logged in. Fetching user details...');
-      const userId = req.auth.userId;
+      const userId = auth.userId;
       const user = await clerkClient.users.getUser(userId);
       console.log('User details:', user);
       const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
@@ -302,8 +297,8 @@ app.post('/transcribe', async (req, res) => {
 app.get('/transcribe/:videoId/:lang', async (req, res) => {
   const videoId = req.params.videoId;
   const selectedLanguage = req.params.lang;
-  const isLoggedIn = !!req.auth?.userId;
-  const identifier = isLoggedIn ? req.auth.userId : req.sessionID;
+  const isLoggedIn = !!getAuth(req)?.userId;
+  const identifier = isLoggedIn ? getAuth(req).userId : req.sessionID;
 
   try {
     const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier, isLoggedIn);

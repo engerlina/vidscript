@@ -79,55 +79,91 @@
       <%- include('footer') %>
     </div>
     
-    <!-- First, load the Clerk script -->
-    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
-    
+    <!-- Clerk Initialization Helper -->
     <script>
-        // Make the key available globally as it was before
-        window.CLERK_PUBLISHABLE_KEY = '<%= clerkPublishableKey %>';
+      // Add event listener for when Clerk is loaded
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log("[DEBUG] DOMContentLoaded - checking Clerk status");
         
-        // Store the key in a variable
-        const clerkKey = "<%= clerkPublishableKey %>";
-        console.log("Clerk key from server:", clerkKey);
+        // Create global variables to track Clerk's state
+        window.__clerkComponentsReady = false;
         
-        // Create a global variable to track Clerk's state
-        window.__clerkReady = false;
-        
-        document.addEventListener("DOMContentLoaded", async function() {
-            // First, check if the key is valid
-            if (!clerkKey || clerkKey.trim() === '') {
-                console.error("Clerk publishable key is empty or invalid");
-                document.dispatchEvent(new CustomEvent('clerk-ready', { detail: { success: false } }));
-                return;
+        // Check if Clerk is already initialized
+        if (window.Clerk && typeof window.Clerk.load === 'function') {
+          console.log("[DEBUG] Clerk object already available");
+          initializeClerk();
+        } else {
+          console.log("[DEBUG] Waiting for Clerk to load");
+          // Wait for Clerk to be available
+          const checkInterval = setInterval(() => {
+            if (window.Clerk && typeof window.Clerk.load === 'function') {
+              clearInterval(checkInterval);
+              console.log("[DEBUG] Clerk object now available");
+              initializeClerk();
             }
-            
-            try {
-                // Initialize Clerk using the recommended pattern
-                console.log("Initializing Clerk with key:", clerkKey);
-                
-                // Create a new Clerk instance
-                const clerk = new Clerk(clerkKey);
-                
-                // Load Clerk
-                await clerk.load();
-                
-                // Set the global Clerk object
-                window.Clerk = clerk;
-                
-                console.log("Clerk initialized successfully");
-                window.__clerkReady = true;
-                
-                // Dispatch event to notify app.js
-                document.dispatchEvent(new CustomEvent('clerk-ready', { 
-                    detail: { success: true } 
-                }));
-            } catch (error) {
-                console.error("Error initializing Clerk:", error);
-                document.dispatchEvent(new CustomEvent('clerk-ready', { 
-                    detail: { success: false, error: error.message } 
-                }));
+          }, 100);
+          
+          // Fallback if Clerk doesn't load within 3 seconds
+          setTimeout(() => {
+            if (!(window.Clerk && typeof window.Clerk.load === 'function')) {
+              console.log("[DEBUG] Clerk failed to load after timeout");
+              clearInterval(checkInterval);
+              // Dispatch events to enable buttons anyway
+              document.dispatchEvent(new CustomEvent('clerk-ready', { 
+                detail: { success: false, error: "Clerk failed to load" } 
+              }));
             }
-        });
+          }, 3000);
+        }
+      });
+      
+      // Function to initialize Clerk
+      function initializeClerk() {
+        try {
+          console.log("[DEBUG] Initializing Clerk with key:", window.Clerk.publishableKey);
+          
+          // Ensure the publishable key is set
+          if (!window.Clerk.publishableKey && window.CLERK_KEY) {
+            console.log("[DEBUG] Setting missing publishable key");
+            window.Clerk.publishableKey = window.CLERK_KEY;
+          }
+          
+          // Call Clerk.load() to initialize components
+          window.Clerk.load({
+            // Explicitly pass the publishable key
+            publishableKey: window.Clerk.publishableKey || window.CLERK_KEY,
+            afterLoaded: (clerk) => {
+              console.log("[DEBUG] Clerk components loaded successfully");
+              // Set global flag for component readiness
+              window.__clerkComponentsReady = true;
+              
+              // Check if user is already signed in
+              if (clerk.user) {
+                console.log("[DEBUG] User is already signed in:", clerk.user.fullName || clerk.user.primaryEmailAddress);
+                console.log("[DEBUG] User image URL:", clerk.user.imageUrl);
+              } else {
+                console.log("[DEBUG] No user is currently signed in");
+              }
+              
+              // Dispatch event to notify app.js
+              document.dispatchEvent(new CustomEvent('clerk-components-ready', { 
+                detail: { success: true, user: clerk.user } 
+              }));
+              
+              // Dispatch ready event
+              document.dispatchEvent(new CustomEvent('clerk-ready', { 
+                detail: { success: true, user: clerk.user } 
+              }));
+            }
+          });
+        } catch (error) {
+          console.error("[DEBUG] Error initializing Clerk:", error);
+          // Dispatch events to enable buttons anyway
+          document.dispatchEvent(new CustomEvent('clerk-ready', { 
+            detail: { success: false, error: error.message } 
+          }));
+        }
+      }
     </script>
     
     <script src="/app.js"></script>

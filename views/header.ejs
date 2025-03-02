@@ -1,6 +1,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="clerk-publishable-key" content="<%= clerkPublishableKey %>" />
   <title><%= typeof title !== 'undefined' ? title : 'Vidscript - Transcribe YouTube Videos' %></title>
   <meta name="description" content="<%= typeof description !== 'undefined' ? description : 'A free resource to transcribe YouTube videos in any language that captions or transcriptions are available for' %>">
 
@@ -17,13 +18,33 @@
   <!-- Favicon -->
   <link href="/favicon.ico" rel="icon" type="image/x-icon" />
 
-  <!-- CSS and JS Links -->
+  <!-- CSS Links -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.6/dist/full.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tailwindcss/typography@latest/dist/typography.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
+
+  <!-- Initialize Clerk with publishable key -->
+  <script>
+    // Store the publishable key globally
+    window.CLERK_KEY = '<%= clerkPublishableKey %>';
+    
+    // Pre-initialize Clerk object with publishable key
+    window.Clerk = {
+      publishableKey: '<%= clerkPublishableKey %>'
+    };
+    console.log("[DEBUG] Pre-initialized Clerk with key:", window.Clerk.publishableKey);
+  </script>
+
+  <!-- Clerk Script - Load with direct key parameter -->
+  <script 
+    async
+    crossorigin="anonymous"
+    type="text/javascript"
+    data-clerk-publishable-key="<%= clerkPublishableKey %>"
+    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js">
+  </script>
 
   <!-- Tracking Code -->
   <script defer src="https://analytics.vertial.com/script.js" data-website-id="140101ed-5163-4b15-9d63-f6c5d29cc8a0"></script>
