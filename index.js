@@ -5,12 +5,21 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const { getSubtitles } = require('youtube-captions-scraper');
+const youtubeSubtitles = require('@suejon/youtube-subtitles');
+const youtubeTranscript = require('youtube-transcript');
+const youtubeCaptionExtractor = require('youtube-caption-extractor');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const { Pool } = require('pg');
 const cron = require('node-cron');
 const { exec } = require('child_process');
+
+// Check if required environment variables are available
+console.log(`[STARTUP] Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`[STARTUP] YouTube API Key available: ${!!process.env.YOUTUBE_API_KEY}`);
+console.log(`[STARTUP] Clerk Publishable Key available: ${!!process.env.CLERK_PUBLISHABLE_KEY}`);
+console.log(`[STARTUP] Database URL available: ${!!process.env.DATABASE_URL}`);
 
 const app = express();
 
@@ -152,7 +161,69 @@ const getAvailableLanguages = async (videoId) => {
 
 const getTranscriptAndSave = async (videoId, selectedLanguage, identifier, isLoggedIn) => {
   try {
-    const subtitles = await getSubtitles({ videoID: videoId, lang: selectedLanguage });
+    console.log(`[DEBUG] Getting subtitles for video ID: ${videoId}, language: ${selectedLanguage}`);
+    let subtitles;
+    
+    try {
+      // First attempt with youtube-captions-scraper
+      subtitles = await getSubtitles({ videoID: videoId, lang: selectedLanguage });
+      console.log(`[DEBUG] Subtitles retrieved successfully with youtube-captions-scraper, entries: ${subtitles.length}`);
+    } catch (primaryError) {
+      console.error(`[ERROR] Primary subtitle method failed: ${primaryError.message}`);
+      
+      // Fallback to @suejon/youtube-subtitles
+      console.log(`[DEBUG] Trying fallback method with @suejon/youtube-subtitles`);
+      try {
+        const result = await youtubeSubtitles.getSubtitles(videoId, selectedLanguage);
+        
+        // Convert to the same format as youtube-captions-scraper
+        subtitles = result.map(item => ({
+          start: item.start,
+          dur: item.duration,
+          text: item.text
+        }));
+        
+        console.log(`[DEBUG] Subtitles retrieved successfully with fallback method, entries: ${subtitles.length}`);
+      } catch (fallbackError) {
+        console.error(`[ERROR] Fallback subtitle method also failed: ${fallbackError.message}`);
+        
+        // Second fallback to youtube-transcript
+        console.log(`[DEBUG] Trying second fallback method with youtube-transcript`);
+        try {
+          const result = await youtubeTranscript.fetchTranscript(videoId);
+          
+          // Convert to the same format as youtube-captions-scraper
+          subtitles = result.map(item => ({
+            start: item.offset / 1000, // Convert ms to seconds
+            dur: item.duration / 1000, // Convert ms to seconds
+            text: item.text
+          }));
+          
+          console.log(`[DEBUG] Subtitles retrieved successfully with second fallback method, entries: ${subtitles.length}`);
+        } catch (secondFallbackError) {
+          console.error(`[ERROR] Second fallback subtitle method also failed: ${secondFallbackError.message}`);
+          
+          // Third fallback to youtube-caption-extractor
+          console.log(`[DEBUG] Trying third fallback method with youtube-caption-extractor`);
+          try {
+            const result = await youtubeCaptionExtractor.extract(videoId, { language: selectedLanguage });
+            
+            // Convert to the same format as youtube-captions-scraper
+            subtitles = result.map(item => ({
+              start: item.start,
+              dur: item.duration || 2, // Default duration if not provided
+              text: item.text
+            }));
+            
+            console.log(`[DEBUG] Subtitles retrieved successfully with third fallback method, entries: ${subtitles.length}`);
+          } catch (thirdFallbackError) {
+            console.error(`[ERROR] Third fallback subtitle method also failed: ${thirdFallbackError.message}`);
+            throw new Error(`All subtitle retrieval methods failed. Primary error: ${primaryError.message}, First fallback error: ${fallbackError.message}, Second fallback error: ${secondFallbackError.message}, Third fallback error: ${thirdFallbackError.message}`);
+          }
+        }
+      }
+    }
+    
     const csvFilename = `transcript_${isLoggedIn ? 'user_' + identifier : identifier}_${videoId}_${selectedLanguage}.csv`;
     const csvWriter = createCsvWriter({
       path: path.join(TRANSCRIPTS_FOLDER, csvFilename),
@@ -163,14 +234,18 @@ const getTranscriptAndSave = async (videoId, selectedLanguage, identifier, isLog
       ]
     });
     await csvWriter.writeRecords(subtitles);
+    console.log(`[DEBUG] CSV file saved: ${csvFilename}`);
 
     const txtFilename = `transcript_${isLoggedIn ? 'user_' + identifier : identifier}_${videoId}_${selectedLanguage}.txt`;
     const txtFilePath = path.join(TRANSCRIPTS_FOLDER, txtFilename);
     const subtitlesText = subtitles.map(entry => entry.text).join('\n');
     fs.writeFileSync(txtFilePath, subtitlesText);
+    console.log(`[DEBUG] TXT file saved: ${txtFilename}`);
 
     return { txtFilename, csvFilename, subtitlesText };
   } catch (error) {
+    console.error(`[ERROR] getTranscriptAndSave error: ${error.message}`);
+    console.error(`[ERROR] Stack trace: ${error.stack}`);
     throw error;
   }
 };
@@ -227,7 +302,9 @@ app.post('/transcribe', async (req, res) => {
   }
 
   try {
+    console.log(`[DEBUG] Fetching available languages for video ID: ${videoId}`);
     const availableLanguages = await getAvailableLanguages(videoId);
+    console.log(`[DEBUG] Available languages: ${JSON.stringify(availableLanguages)}`);
 
     if (availableLanguages.length === 0) {
       return res.status(404).json({ error: 'No captions found for the video' });
@@ -235,27 +312,38 @@ app.post('/transcribe', async (req, res) => {
 
     if (availableLanguages.length === 1) {
       const selectedLanguage = availableLanguages[0].code;
-      const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier, isLoggedIn);
+      console.log(`[DEBUG] Selected language: ${selectedLanguage}`);
+      
+      try {
+        const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier, isLoggedIn);
+        console.log(`[DEBUG] Transcript saved successfully: ${txtFilename}`);
 
-      if (!isLoggedIn) {
-        req.session.usageCount++;
+        if (!isLoggedIn) {
+          req.session.usageCount++;
+        }
+
+        // Store the transcription details in the database
+        const transcriptFilename = path.parse(txtFilename).name;
+        await pool.query(
+          'INSERT INTO transcriptions (url, user_identifier, request_datetime, transcript_filename) VALUES ($1, $2, $3, $4)',
+          [youtubeUrl, userIdentifier, new Date(), transcriptFilename]
+        );
+
+        res.json({
+          languageCodes: availableLanguages,
+          savedTranscripts: [{ languageCode: selectedLanguage, txtFilename, csvFilename, subtitlesText }]
+        });
+      } catch (transcriptError) {
+        console.error(`[ERROR] Failed to get transcript: ${transcriptError.message}`);
+        console.error(`[ERROR] Stack trace: ${transcriptError.stack}`);
+        res.status(500).json({ error: `An error occurred while fetching the subtitles: ${transcriptError.message}` });
       }
-
-      // Store the transcription details in the database
-      const transcriptFilename = path.parse(txtFilename).name;
-      await pool.query(
-        'INSERT INTO transcriptions (url, user_identifier, request_datetime, transcript_filename) VALUES ($1, $2, $3, $4)',
-        [youtubeUrl, userIdentifier, new Date(), transcriptFilename]
-      );
-
-      res.json({
-        languageCodes: availableLanguages,
-        savedTranscripts: [{ languageCode: selectedLanguage, txtFilename, csvFilename, subtitlesText }]
-      });
     } else {
       res.json({ languageCodes: availableLanguages, savedTranscripts: [] });
     }
   } catch (error) {
+    console.error(`[ERROR] Transcribe endpoint error: ${error.message}`);
+    console.error(`[ERROR] Stack trace: ${error.stack}`);
     res.status(500).json({ error: 'An error occurred while fetching the subtitles.' });
   }
 });
