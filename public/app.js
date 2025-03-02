@@ -204,31 +204,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   console.log('Loading Clerk with frontend API:', frontendApi);
 
-  const script = document.createElement('script');
-  script.setAttribute('data-clerk-publishable-key', frontendApi);
-  script.async = true;
-  script.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
-  script.crossOrigin = 'anonymous';
-  script.addEventListener('load', () => {
-    console.log('Clerk loaded successfully');
+  if (frontendApi && frontendApi !== 'undefined' && frontendApi !== '') {
+    const script = document.createElement('script');
+    script.setAttribute('data-clerk-publishable-key', frontendApi);
+    script.async = true;
+    script.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
+    script.crossOrigin = 'anonymous';
+    script.addEventListener('load', () => {
+      console.log('Clerk loaded successfully');
 
-    const userButtons = document.getElementById('userButtons');
-    const userAvatar = document.getElementById('userAvatar');
-    const userAvatarImg = document.getElementById('userAvatarImg');
-    const signOutButton = document.getElementById('sign-out-button');
-    const profileLink = document.getElementById('profile-link');
-    const hamburgerMenu = document.getElementById('hamburgerMenu');
+      const userButtons = document.getElementById('userButtons');
+      const userAvatar = document.getElementById('userAvatar');
+      const userAvatarImg = document.getElementById('userAvatarImg');
+      const signOutButton = document.getElementById('sign-out-button');
+      const profileLink = document.getElementById('profile-link');
+      const hamburgerMenu = document.getElementById('hamburgerMenu');
 
-    if (profileLink) {
-      profileLink.addEventListener('click', () => {
-        window.Clerk.openUserProfile();
-      });
-    }
+      if (profileLink) {
+        profileLink.addEventListener('click', () => {
+          window.Clerk.openUserProfile();
+        });
+      }
 
-    // Check if the user is signed in
-    window.Clerk.load({
-      publishableKey: frontendApi
-    }).then(() => {
+      // Check if the user is signed in
       console.log('Clerk components ready');
 
       window.Clerk.addListener(({ user }) => {
@@ -310,9 +308,14 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         console.warn('Dropdown Sign-up button not found');
       }
-    }).catch((err) => {
-      console.error('Error loading Clerk components:', err);
     });
-  });
-  document.head.appendChild(script);
+    
+    script.addEventListener('error', (err) => {
+      console.error('Error loading Clerk script:', err);
+    });
+    
+    document.head.appendChild(script);
+  } else {
+    console.warn('Clerk publishable key is missing or invalid. Authentication features will not be available.');
+  }
 });

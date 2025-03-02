@@ -55,7 +55,10 @@ const clerkMiddleware = ClerkExpressWithAuth({
   secretKey: process.env.CLERK_SECRET_KEY,
 });
 
+// Ensure the publishable key is available to all views
 app.use((req, res, next) => {
+  // Log the key to verify it's being set correctly
+  console.log('Setting Clerk publishable key:', process.env.CLERK_PUBLISHABLE_KEY);
   res.locals.clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY;
   next();
 });
