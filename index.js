@@ -11,16 +11,12 @@ const pgSession = require('connect-pg-simple')(session);
 const { Pool } = require('pg');
 const cron = require('node-cron');
 const { exec } = require('child_process');
-const { ClerkExpressWithAuth, users } = require('@clerk/clerk-sdk-node');
-
-
-require('dotenv').config();
+const { ClerkExpressWithAuth, users, clerkClient } = require('@clerk/clerk-sdk-node');
 
 const app = express();
 
 // Use the ClerkExpressWithAuth middleware for lax authentication
 app.use(ClerkExpressWithAuth({ secretKey: process.env.CLERK_SECRET_KEY }));
-app.use(ClerkExpressRequireAuth({ secretKey: process.env.CLERK_SECRET_KEY }));
 
 app.use((req, res, next) => {
   if (req.headers.host === 'vidscript.co') {
