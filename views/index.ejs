@@ -154,6 +154,16 @@
               document.dispatchEvent(new CustomEvent('clerk-ready', { 
                 detail: { success: true, user: clerk.user } 
               }));
+              
+              // Set up auth state change listeners to refresh usage count
+              clerk.addListener(({ user }) => {
+                console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
+                
+                // Refresh usage count when auth state changes
+                if (typeof updateUsageCount === 'function') {
+                  updateUsageCount();
+                }
+              });
             }
           });
         } catch (error) {

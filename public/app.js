@@ -12,6 +12,70 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModalBtn = document.getElementById('close-modal-btn');
   const buttonText = document.getElementById('buttonText');
 
+  // Create usage counter element
+  const usageCounterContainer = document.createElement('div');
+  usageCounterContainer.className = 'usage-counter text-sm text-gray-500 mt-2 mb-4';
+  usageCounterContainer.id = 'usage-counter';
+  usageCounterContainer.textContent = 'Loading usage information...';
+
+  // Insert the usage counter after the input container
+  const inputContainer = document.querySelector('.input-container');
+  if (inputContainer && inputContainer.parentNode) {
+    inputContainer.parentNode.insertBefore(usageCounterContainer, inputContainer.nextSibling);
+  }
+
+  // Function to fetch and update usage count
+  function updateUsageCount() {
+    fetch('/usage-count')
+      .then(response => {
+        // Check if the response is OK (status in the range 200-299)
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.error) {
+          console.error('Error fetching usage count:', data.error);
+          // Still update the UI with the fallback data provided
+        }
+        
+        const usageCounter = document.getElementById('usage-counter');
+        if (usageCounter) {
+          const userType = data.isLoggedIn ? 'Logged-in user' : 'Free user';
+          const usageText = `${userType}: ${data.usageCount}/${data.maxUsageCount} uses today (${data.remainingUses} remaining)`;
+          
+          // Set the counter text
+          usageCounter.textContent = usageText;
+          
+          // Add warning color if close to limit
+          if (data.remainingUses <= 2) {
+            usageCounter.className = 'usage-counter text-sm text-warning mt-2 mb-4 font-bold';
+          } else {
+            usageCounter.className = 'usage-counter text-sm text-gray-500 mt-2 mb-4';
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Failed to fetch usage count:', error);
+        
+        // Set a default message in the usage counter
+        const usageCounter = document.getElementById('usage-counter');
+        if (usageCounter) {
+          usageCounter.textContent = 'Usage count unavailable';
+          usageCounter.className = 'usage-counter text-sm text-gray-400 mt-2 mb-4';
+        }
+        
+        // Retry after 5 seconds if it's a network error
+        setTimeout(() => {
+          updateUsageCount();
+        }, 5000);
+      });
+  }
+
+  // Update usage count on page load
+  updateUsageCount();
+
   function showModal() {
     console.log('Showing modal');
     languageModal.classList.add('show');
@@ -58,13 +122,70 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       body: JSON.stringify({ url })
     })
-      .then(response => response.json())
-      .then(data => {
+      .then(response => {
+        // Store the status code to check for rate limiting
+        const status = response.status;
+        return response.json().then(data => {
+          return { data, status };
+        });
+      })
+      .then(({ data, status }) => {
         console.log('Transcription data received:', data);
+
+        // Reset button state
+        transcribeBtn.disabled = false;
+        buttonText.textContent = 'Transcribe';
+        transcribeBtn.querySelector('svg').classList.remove('hidden');
+        const spinner = document.getElementById('loadingSpinner');
+        if (spinner) {
+          spinner.remove();
+        }
+
+        // Update usage count after transcription
+        updateUsageCount();
 
         if (data.error) {
           console.error('Error from server:', data.error);
-          alert('Error: ' + data.error);
+          
+          // Check if it's a rate limit error (HTTP 429)
+          if (status === 429) {
+            // Create a more user-friendly rate limit message
+            const errorContainer = document.createElement('div');
+            errorContainer.className = 'alert alert-error shadow-lg mb-4';
+            errorContainer.innerHTML = `
+              <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div>
+                  <h3 class="font-bold">Rate Limit Reached</h3>
+                  <div class="text-xs">${data.error}</div>
+                  ${!window.Clerk?.user ? '<div class="mt-2"><button id="signInBtn" class="btn btn-sm btn-primary">Sign In for More Uses</button></div>' : ''}
+                </div>
+              </div>
+            `;
+            
+            // Insert the error message at the top of the page
+            const container = document.querySelector('.container');
+            container.insertBefore(errorContainer, container.firstChild);
+            
+            // Add event listener for sign in button if it exists
+            const signInBtn = document.getElementById('signInBtn');
+            if (signInBtn) {
+              signInBtn.addEventListener('click', () => {
+                window.Clerk?.openSignIn();
+              });
+            }
+            
+            // Auto-remove the alert after 10 seconds
+            setTimeout(() => {
+              errorContainer.classList.add('fade-out');
+              setTimeout(() => {
+                errorContainer.remove();
+              }, 500);
+            }, 10000);
+          } else {
+            // Regular error alert for non-rate-limit errors
+            alert('Error: ' + data.error);
+          }
           return;
         }
 
@@ -107,16 +228,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(error => {
         console.error('An error occurred while fetching the transcription:', error);
         alert('An error occurred while fetching the transcription');
-      })
-      .finally(() => {
-        // Revert button to original state
-        transcribeBtn.disabled = false;
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        if (loadingSpinner) {
-          loadingSpinner.remove();
-        }
-        buttonText.textContent = 'Transcribe';
-        transcribeBtn.querySelector('svg').classList.remove('hidden');
       });
   }
 

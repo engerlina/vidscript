@@ -215,3 +215,23 @@ svg.fill-current {
     display: none;
   }
 }
+
+/* Usage counter styling */
+.usage-counter {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.usage-counter.text-warning {
+  background-color: rgba(255, 193, 7, 0.2);
+  border-left: 3px solid #ffc107;
+}
+
+/* Animation for fading out error messages */
+.fade-out {
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}

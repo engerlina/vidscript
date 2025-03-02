@@ -53,11 +53,30 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+// Ensure the transcriptions table exists
+(async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS transcriptions (
+        id SERIAL PRIMARY KEY,
+        url TEXT NOT NULL,
+        user_identifier TEXT NOT NULL,
+        request_datetime TIMESTAMP NOT NULL,
+        transcript_filename TEXT NOT NULL
+      )
+    `);
+    console.log('[STARTUP] Ensured transcriptions table exists');
+  } catch (error) {
+    console.error('[STARTUP] Error ensuring transcriptions table exists:', error.message);
+  }
+})();
+
 // Middleware for session handling using PostgreSQL
 app.use(session({
   store: new pgSession({
     pool: pool, // Connection pool
     tableName: 'session', // Use another table-name than the default "session" one
+    createTableIfMissing: true, // Create the session table if it doesn't exist
   }),
   secret: process.env.SESSION_SECRET || 'default-secret',
   resave: false,
@@ -91,7 +110,9 @@ app.get(
   }
 );
 
-const MAX_USES_PER_DAY = 100;
+// Updated rate limits
+const FREE_USER_MAX_USES_PER_DAY = 5;
+const LOGGED_IN_USER_MAX_USES_PER_DAY = 10;
 const TRANSCRIPTS_FOLDER = path.join(__dirname, 'transcripts');
 
 const cors = require('cors');
@@ -297,8 +318,36 @@ app.post('/transcribe', async (req, res) => {
     }
   }
 
-  if (!isLoggedIn && req.session.usageCount >= MAX_USES_PER_DAY) {
-    return res.status(429).json({ error: 'Daily maximum of 100 uses, please Sign up for unlimited uses' });
+  // Check usage limits based on authentication status
+  if (isLoggedIn) {
+    // For logged-in users
+    try {
+      const result = await pool.query(
+        'SELECT COUNT(*) FROM transcriptions WHERE user_identifier = $1 AND request_datetime > NOW() - INTERVAL \'1 day\'',
+        [userIdentifier]
+      );
+      const usageCount = parseInt(result.rows[0].count);
+      
+      if (usageCount >= LOGGED_IN_USER_MAX_USES_PER_DAY) {
+        return res.status(429).json({ 
+          error: `Daily maximum of ${LOGGED_IN_USER_MAX_USES_PER_DAY} uses reached. Please try again tomorrow.` 
+        });
+      }
+      
+      console.log(`[INFO] Logged-in user ${userIdentifier} has used ${usageCount}/${LOGGED_IN_USER_MAX_USES_PER_DAY} requests today`);
+    } catch (error) {
+      console.error(`[ERROR] Failed to check usage for logged-in user: ${error.message}`);
+      // Continue with the request if we can't check the database
+    }
+  } else {
+    // For free users
+    if (req.session.usageCount >= FREE_USER_MAX_USES_PER_DAY) {
+      return res.status(429).json({ 
+        error: `Daily maximum of ${FREE_USER_MAX_USES_PER_DAY} uses for free accounts. Please sign up for more uses (${LOGGED_IN_USER_MAX_USES_PER_DAY} per day).` 
+      });
+    }
+    
+    console.log(`[INFO] Free user has used ${req.session.usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today`);
   }
 
   try {
@@ -318,6 +367,7 @@ app.post('/transcribe', async (req, res) => {
         const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier, isLoggedIn);
         console.log(`[DEBUG] Transcript saved successfully: ${txtFilename}`);
 
+        // Increment usage count
         if (!isLoggedIn) {
           req.session.usageCount++;
         }
@@ -351,21 +401,81 @@ app.post('/transcribe', async (req, res) => {
 app.get('/transcribe/:videoId/:lang', async (req, res) => {
   const videoId = req.params.videoId;
   const selectedLanguage = req.params.lang;
-  const isLoggedIn = !!getAuth(req)?.userId;
-  const identifier = isLoggedIn ? getAuth(req).userId : req.sessionID;
+  const auth = getAuth(req);
+  const isLoggedIn = !!auth?.userId;
+  let identifier = req.sessionID;
+  let userIdentifier = req.sessionID;
+
+  if (isLoggedIn) {
+    try {
+      const userId = auth.userId;
+      const user = await clerkClient.users.getUser(userId);
+      const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
+      if (primaryEmail) {
+        userIdentifier = primaryEmail.emailAddress;
+        identifier = userIdentifier;
+      }
+    } catch (error) {
+      // Fallback to using req.sessionID as identifier
+      identifier = req.sessionID;
+      userIdentifier = req.sessionID;
+    }
+  }
+
+  // Check usage limits based on authentication status
+  if (isLoggedIn) {
+    // For logged-in users
+    try {
+      const result = await pool.query(
+        'SELECT COUNT(*) FROM transcriptions WHERE user_identifier = $1 AND request_datetime > NOW() - INTERVAL \'1 day\'',
+        [userIdentifier]
+      );
+      const usageCount = parseInt(result.rows[0].count);
+      
+      if (usageCount >= LOGGED_IN_USER_MAX_USES_PER_DAY) {
+        return res.status(429).json({ 
+          error: `Daily maximum of ${LOGGED_IN_USER_MAX_USES_PER_DAY} uses reached. Please try again tomorrow.` 
+        });
+      }
+      
+      console.log(`[INFO] Logged-in user ${userIdentifier} has used ${usageCount}/${LOGGED_IN_USER_MAX_USES_PER_DAY} requests today`);
+    } catch (error) {
+      console.error(`[ERROR] Failed to check usage for logged-in user: ${error.message}`);
+      // Continue with the request if we can't check the database
+    }
+  } else {
+    // For free users
+    if (req.session.usageCount >= FREE_USER_MAX_USES_PER_DAY) {
+      return res.status(429).json({ 
+        error: `Daily maximum of ${FREE_USER_MAX_USES_PER_DAY} uses for free accounts. Please sign up for more uses (${LOGGED_IN_USER_MAX_USES_PER_DAY} per day).` 
+      });
+    }
+    
+    console.log(`[INFO] Free user has used ${req.session.usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today`);
+  }
 
   try {
     const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier, isLoggedIn);
 
+    // Increment usage count
     if (!isLoggedIn) {
       req.session.usageCount++;
     }
+
+    // Store the transcription details in the database
+    const transcriptFilename = path.parse(txtFilename).name;
+    await pool.query(
+      'INSERT INTO transcriptions (url, user_identifier, request_datetime, transcript_filename) VALUES ($1, $2, $3, $4)',
+      [`https://www.youtube.com/watch?v=${videoId}`, userIdentifier, new Date(), transcriptFilename]
+    );
 
     res.json({
       languageCodes: [{ code: selectedLanguage, name: getLanguageName(selectedLanguage) }],
       savedTranscripts: [{ languageCode: selectedLanguage, txtFilename, csvFilename, subtitlesText }]
     });
   } catch (error) {
+    console.error(`[ERROR] GET transcribe endpoint error: ${error.message}`);
+    console.error(`[ERROR] Stack trace: ${error.stack}`);
     res.status(500).json({ error: 'An error occurred while fetching the subtitles.' });
   }
 });
@@ -397,10 +507,90 @@ cron.schedule('0 * * * *', () => {
   });
 });
 
+// Schedule a task to reset session usage counts at midnight
+cron.schedule('0 0 * * *', async () => {
+  console.log('[CRON] Running midnight task to reset session usage counts');
+  
+  try {
+    // Clear old sessions from the database (older than 1 day)
+    const result = await pool.query(
+      "DELETE FROM \"session\" WHERE expire < NOW()"
+    );
+    console.log(`[CRON] Cleared ${result.rowCount} expired sessions`);
+  } catch (error) {
+    console.error(`[CRON] Error clearing expired sessions: ${error.message}`);
+  }
+  
+  console.log('[CRON] Midnight task completed');
+});
+
 app.get('/modal', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'modal.html'));
 });
 
+// Add a new endpoint to get the current usage count
+app.get('/usage-count', async (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const isLoggedIn = !!auth?.userId;
+    let userIdentifier = req.sessionID;
+
+    if (isLoggedIn) {
+      try {
+        const userId = auth.userId;
+        const user = await clerkClient.users.getUser(userId);
+        const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
+        if (primaryEmail) {
+          userIdentifier = primaryEmail.emailAddress;
+        }
+        
+        const result = await pool.query(
+          'SELECT COUNT(*) FROM transcriptions WHERE user_identifier = $1 AND request_datetime > NOW() - INTERVAL \'1 day\'',
+          [userIdentifier]
+        );
+        const usageCount = parseInt(result.rows[0].count);
+        
+        res.json({
+          isLoggedIn: true,
+          usageCount: usageCount,
+          maxUsageCount: LOGGED_IN_USER_MAX_USES_PER_DAY,
+          remainingUses: LOGGED_IN_USER_MAX_USES_PER_DAY - usageCount
+        });
+      } catch (error) {
+        console.error(`[ERROR] Failed to get usage count for logged-in user: ${error.message}`);
+        // Still return a valid JSON response even on error
+        res.status(500).json({ 
+          error: 'Failed to get usage count for logged-in user',
+          isLoggedIn: true,
+          usageCount: 0,
+          maxUsageCount: LOGGED_IN_USER_MAX_USES_PER_DAY,
+          remainingUses: LOGGED_IN_USER_MAX_USES_PER_DAY
+        });
+      }
+    } else {
+      // For free users, use the session count
+      const usageCount = req.session.usageCount || 0;
+      
+      res.json({
+        isLoggedIn: false,
+        usageCount: usageCount,
+        maxUsageCount: FREE_USER_MAX_USES_PER_DAY,
+        remainingUses: FREE_USER_MAX_USES_PER_DAY - usageCount
+      });
+    }
+  } catch (error) {
+    // Catch-all error handler to ensure we always return JSON
+    console.error(`[ERROR] Unexpected error in usage-count endpoint: ${error.message}`);
+    res.status(500).json({ 
+      error: 'An unexpected error occurred',
+      isLoggedIn: false,
+      usageCount: 0,
+      maxUsageCount: FREE_USER_MAX_USES_PER_DAY,
+      remainingUses: FREE_USER_MAX_USES_PER_DAY
+    });
+  }
+});
+
 app.listen(port, () => {
-  // Server is running silently
+  console.log(`Server running on port ${port}`);
 });
