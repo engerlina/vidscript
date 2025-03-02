@@ -111,8 +111,8 @@ app.get(
 );
 
 // Updated rate limits
-const FREE_USER_MAX_USES_PER_DAY = 5;
-const LOGGED_IN_USER_MAX_USES_PER_DAY = 10;
+const FREE_USER_MAX_USES_PER_DAY = 2;
+const LOGGED_IN_USER_MAX_USES_PER_DAY = 3;
 const TRANSCRIPTS_FOLDER = path.join(__dirname, 'transcripts');
 
 const cors = require('cors');

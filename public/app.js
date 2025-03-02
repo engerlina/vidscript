@@ -14,14 +14,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Create usage counter element
   const usageCounterContainer = document.createElement('div');
-  usageCounterContainer.className = 'usage-counter text-sm text-gray-500 mt-2 mb-4';
+  usageCounterContainer.className = 'usage-counter text-sm text-center mx-auto mb-4';
   usageCounterContainer.id = 'usage-counter';
   usageCounterContainer.textContent = 'Loading usage information...';
 
-  // Insert the usage counter after the input container
+  // Insert the usage counter before the input container
   const inputContainer = document.querySelector('.input-container');
   if (inputContainer && inputContainer.parentNode) {
-    inputContainer.parentNode.insertBefore(usageCounterContainer, inputContainer.nextSibling);
+    inputContainer.parentNode.insertBefore(usageCounterContainer, inputContainer);
   }
 
   // Function to fetch and update usage count
@@ -43,17 +43,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const usageCounter = document.getElementById('usage-counter');
         if (usageCounter) {
           const userType = data.isLoggedIn ? 'Logged-in user' : 'Free user';
-          const usageText = `${userType}: ${data.usageCount}/${data.maxUsageCount} uses today (${data.remainingUses} remaining)`;
+          
+          // Format the text based on remaining uses
+          let usageText;
+          if (data.remainingUses <= 0) {
+            usageText = `${userType}: ${data.usageCount}/${data.maxUsageCount} uses today (0 remaining)`;
+            usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4 text-danger';
+          } else if (data.remainingUses === 1) {
+            usageText = `${userType}: ${data.remainingUses} use remaining today`;
+            usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4 text-warning';
+          } else if (data.remainingUses <= 2) {
+            usageText = `${userType}: ${data.remainingUses} uses remaining today`;
+            usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4 text-warning';
+          } else {
+            usageText = `${userType}: ${data.remainingUses} uses remaining today`;
+            usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4';
+          }
           
           // Set the counter text
           usageCounter.textContent = usageText;
-          
-          // Add warning color if close to limit
-          if (data.remainingUses <= 2) {
-            usageCounter.className = 'usage-counter text-sm text-warning mt-2 mb-4 font-bold';
-          } else {
-            usageCounter.className = 'usage-counter text-sm text-gray-500 mt-2 mb-4';
-          }
         }
       })
       .catch(error => {
@@ -63,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const usageCounter = document.getElementById('usage-counter');
         if (usageCounter) {
           usageCounter.textContent = 'Usage count unavailable';
-          usageCounter.className = 'usage-counter text-sm text-gray-400 mt-2 mb-4';
+          usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4 text-gray-400';
         }
         
         // Retry after 5 seconds if it's a network error
