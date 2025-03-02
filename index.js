@@ -82,12 +82,12 @@ app.use(session({
     createTableIfMissing: true, // Create the session table if it doesn't exist
   }),
   secret: process.env.SESSION_SECRET || 'default-secret',
-  resave: true, // Changed to true to ensure session is saved on every request
-  saveUninitialized: true, // Changed to true to ensure session is created for all users
+  resave: true, // Ensure session is saved on every request
+  saveUninitialized: true, // Ensure session is created for all users
   cookie: {
     secure: process.env.NODE_ENV === 'production', // use secure cookies in production
     maxAge: 1000 * 60 * 60 * 24, // 1 day
-    sameSite: 'lax', // Use lax to allow cross-site requests with navigation
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Allow cross-site cookies in production
     domain: process.env.NODE_ENV === 'production' ? '.vidscript.co' : undefined // Set domain in production
   }
 }));
@@ -514,6 +514,18 @@ app.post('/transcribe', validateRequest, async (req, res) => {
         // Increment usage count
         if (!isLoggedIn) {
           req.session.usageCount++;
+          // Force session save to ensure the count is persisted immediately
+          await new Promise((resolve, reject) => {
+            req.session.save(err => {
+              if (err) {
+                console.error('[ERROR] Failed to save session after incrementing usage count:', err);
+                reject(err);
+              } else {
+                console.log(`[INFO] Session saved with updated usage count: ${req.session.usageCount}`);
+                resolve();
+              }
+            });
+          });
         }
 
         // Store the transcription details in the database
@@ -604,6 +616,18 @@ app.get('/transcribe/:videoId/:lang', validateRequest, async (req, res) => {
     // Increment usage count
     if (!isLoggedIn) {
       req.session.usageCount++;
+      // Force session save to ensure the count is persisted immediately
+      await new Promise((resolve, reject) => {
+        req.session.save(err => {
+          if (err) {
+            console.error('[ERROR] Failed to save session after incrementing usage count:', err);
+            reject(err);
+          } else {
+            console.log(`[INFO] Session saved with updated usage count: ${req.session.usageCount}`);
+            resolve();
+          }
+        });
+      });
     }
 
     // Store the transcription details in the database

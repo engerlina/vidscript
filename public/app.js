@@ -123,19 +123,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (usageCounter) {
           const userType = data.isLoggedIn ? 'Logged-in user' : 'Free user';
           
-          // Format the text based on remaining uses
-          let usageText;
+          // Format the text based on usage count
+          let usageText = `${userType}: ${data.usageCount}/${data.maxUsageCount} uses today`;
+          
+          // Add remaining uses in parentheses
+          if (data.remainingUses > 0) {
+            usageText += ` (${data.remainingUses} remaining)`;
+          } else {
+            usageText += ' (0 remaining)';
+          }
+          
+          // Set appropriate styling based on remaining uses
           if (data.remainingUses <= 0) {
-            usageText = `${userType}: ${data.usageCount}/${data.maxUsageCount} uses today (0 remaining)`;
             usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4 text-danger';
-          } else if (data.remainingUses === 1) {
-            usageText = `${userType}: ${data.remainingUses} use remaining today`;
-            usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4 text-warning';
           } else if (data.remainingUses <= 2) {
-            usageText = `${userType}: ${data.remainingUses} uses remaining today`;
             usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4 text-warning';
           } else {
-            usageText = `${userType}: ${data.remainingUses} uses remaining today`;
             usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4';
           }
           
@@ -184,62 +187,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function transcribeVideo() {
     const url = urlInput.value;
-    console.log(`URL input: ${url}`);
     const videoId = getYouTubeVideoId(url);
-    console.log(`Extracted video ID: ${videoId}`);
-
+    
     if (!videoId) {
-      alert('Invalid YouTube URL');
+      alert('Please enter a valid YouTube URL');
       return;
     }
-
-    // If CSRF token is not available, fetch it first
+    
+    // Clear previous results
+    results.innerHTML = '';
+    thumbnail.innerHTML = '';
+    transcription.innerHTML = '';
+    
+    // Show loading state
+    buttonText.textContent = 'Transcribing...';
+    transcribeBtn.disabled = true;
+    
+    // Show thumbnail
+    thumbnail.innerHTML = `<img src="https://img.youtube.com/vi/${videoId}/0.jpg" alt="Video Thumbnail" class="thumbnail-img">`;
+    
+    // Ensure we have a CSRF token
     if (!csrfToken) {
+      console.log('[SECURITY] No CSRF token available, fetching one...');
       fetchCsrfToken();
       setTimeout(transcribeVideo, 1000); // Retry after 1 second
       return;
     }
-
-    // Change button to loading state
-    transcribeBtn.disabled = true;
-    buttonText.textContent = 'Loading...';
-    transcribeBtn.querySelector('svg').classList.add('hidden');
-    const spinner = document.createElement('span');
-    spinner.className = 'loading loading-spinner mr-2';
-    spinner.id = 'loadingSpinner';
-    transcribeBtn.insertBefore(spinner, buttonText);
-
+    
     fetch('/transcribe', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-Token': csrfToken
       },
-      credentials: 'include', // Important: include cookies with the request
-      body: JSON.stringify({ url })
+      body: JSON.stringify({ url }),
+      credentials: 'include' // Important: include cookies with the request
     })
       .then(response => {
-        // Store the status code to check for rate limiting
         const status = response.status;
-        return response.json().then(data => {
-          return { data, status };
-        });
+        return response.json().then(data => ({ data, status }));
       })
       .then(({ data, status }) => {
         console.log('Transcription data received:', data);
-
+        
         // Reset button state
-        transcribeBtn.disabled = false;
         buttonText.textContent = 'Transcribe';
-        transcribeBtn.querySelector('svg').classList.remove('hidden');
-        const spinner = document.getElementById('loadingSpinner');
-        if (spinner) {
-          spinner.remove();
-        }
-
-        // Update usage count after transcription
+        transcribeBtn.disabled = false;
+        
+        // Update usage count after successful transcription
         updateUsageCount();
-
+        
         if (data.error) {
           console.error('Error from server:', data.error);
           
@@ -270,21 +267,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.Clerk?.openSignIn();
               });
             }
-            
-            // Auto-remove the alert after 10 seconds
-            setTimeout(() => {
-              errorContainer.classList.add('fade-out');
-              setTimeout(() => {
-                errorContainer.remove();
-              }, 500);
-            }, 10000);
-          } else if (status === 403) {
-            // Security error - refresh the CSRF token and show error
-            fetchCsrfToken();
-            alert('Security error: ' + data.error + '. Please try again.');
           } else {
-            // Regular error alert for non-rate-limit errors
-            alert('Error: ' + data.error);
+            // For other errors, show a simple error message
+            results.innerHTML = `<div class="alert alert-error shadow-lg mb-4">
+              <div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>${data.error}</span>
+              </div>
+            </div>`;
           }
           return;
         }
@@ -332,21 +322,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function handleLanguageSelection(videoId, languageCode) {
-    console.log(`Language selected: ${languageCode}`);
+    console.log(`Selected language: ${languageCode} for video ID: ${videoId}`);
     
-    // If CSRF token is not available, fetch it first
+    // Ensure we have a CSRF token
     if (!csrfToken) {
+      console.log('[SECURITY] No CSRF token available for language selection, fetching one...');
       await new Promise(resolve => {
         fetchCsrfToken();
         setTimeout(resolve, 1000);
       });
       
-      // If still not available, show error
+      // If still no token, alert the user
       if (!csrfToken) {
-        alert('Could not secure the request. Please refresh the page and try again.');
+        alert('Could not secure a connection. Please refresh the page and try again.');
         return;
       }
     }
+    
+    // Hide the modal
+    hideModal();
+    
+    // Show loading state
+    const loadingMessage = document.createElement('div');
+    loadingMessage.className = 'loading-message';
+    loadingMessage.innerHTML = `
+      <div class="flex items-center justify-center my-4">
+        <span class="loading loading-spinner loading-md mr-2"></span>
+        <span>Loading transcript...</span>
+      </div>
+    `;
+    transcription.innerHTML = '';
+    transcription.appendChild(loadingMessage);
     
     try {
       const response = await fetch(`/transcribe/${videoId}/${languageCode}`, {
@@ -354,41 +360,81 @@ document.addEventListener('DOMContentLoaded', () => {
         headers: {
           'X-CSRF-Token': csrfToken
         },
-        credentials: 'include' // Important: include cookies with the request
+        credentials: 'include'
       });
       
-      // Check if it's a security error
-      if (response.status === 403) {
+      // Check for rate limiting or other errors
+      if (response.status === 429) {
         const errorData = await response.json();
-        console.error('Security error:', errorData.error);
-        fetchCsrfToken(); // Refresh the token
-        alert('Security error: ' + errorData.error + '. Please try again.');
+        // Create a more user-friendly rate limit message
+        const errorContainer = document.createElement('div');
+        errorContainer.className = 'alert alert-error shadow-lg mb-4 rate-limit-banner';
+        errorContainer.innerHTML = `
+          <div class="content">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div>
+              <h3 class="font-bold">Rate Limit Reached</h3>
+              <div class="text-xs">Daily maximum of ${usageLimits.freeUserLimit} uses for free accounts. Please sign up for more uses (${usageLimits.loggedInUserLimit} per day).</div>
+            </div>
+          </div>
+          ${!window.Clerk?.user ? '<div class="sign-in-button"><button id="signInBtn" class="btn btn-sm btn-primary">SIGN IN FOR MORE USES</button></div>' : ''}
+        `;
+        
+        // Insert the error message at the top of the page
+        const container = document.querySelector('.container');
+        container.insertBefore(errorContainer, container.firstChild);
+        
+        // Add event listener for sign in button if it exists
+        const signInBtn = document.getElementById('signInBtn');
+        if (signInBtn) {
+          signInBtn.addEventListener('click', () => {
+            window.Clerk?.openSignIn();
+          });
+        }
+        
+        transcription.innerHTML = '';
+        return;
+      } else if (response.status === 403) {
+        // Security error - refresh the CSRF token
+        fetchCsrfToken();
+        alert('Security error. Please try again.');
+        transcription.innerHTML = '';
+        return;
+      } else if (!response.ok) {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Failed to fetch transcript'}`);
+        transcription.innerHTML = '';
         return;
       }
       
-      const transcriptData = await response.json();
-      console.log('Transcript data received for selected language:', transcriptData);
-
-      if (transcriptData.error) {
-        console.error('Error from server:', transcriptData.error);
-        alert('Error: ' + transcriptData.error);
-        return;
-      }
-
+      const data = await response.json();
+      console.log('Transcript data received:', data);
+      
       // Update usage count after successful transcription
       updateUsageCount();
-
-      const savedTranscript = transcriptData.savedTranscripts.find(transcript => transcript.languageCode === languageCode);
-      if (savedTranscript) {
-        displayTranscription(savedTranscript);
-        hideModal();
+      
+      if (data.error) {
+        alert(`Error: ${data.error}`);
+        transcription.innerHTML = '';
+        return;
+      }
+      
+      if (data.savedTranscripts && data.savedTranscripts.length > 0) {
+        const transcript = data.savedTranscripts[0];
+        
+        // Display the transcript
+        displayTranscript(transcript.subtitlesText);
+        
+        // Enable download buttons
+        enableDownloadButtons(transcript.txtFilename, transcript.csvFilename);
       } else {
-        console.error('No transcript found for the selected language');
-        alert('No transcript found for the selected language');
+        alert('No transcript found for the selected language.');
+        transcription.innerHTML = '';
       }
     } catch (error) {
       console.error('Error fetching transcript:', error);
       alert('An error occurred while fetching the transcript. Please try again.');
+      transcription.innerHTML = '';
     }
   }
 
