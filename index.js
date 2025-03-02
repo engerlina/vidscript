@@ -14,6 +14,9 @@ const pgSession = require('connect-pg-simple')(session);
 const { Pool } = require('pg');
 const cron = require('node-cron');
 const { exec } = require('child_process');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 
 // Check if required environment variables are available
 console.log(`[STARTUP] Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -115,8 +118,132 @@ const FREE_USER_MAX_USES_PER_DAY = 2;
 const LOGGED_IN_USER_MAX_USES_PER_DAY = 3;
 const TRANSCRIPTS_FOLDER = path.join(__dirname, 'transcripts');
 
-const cors = require('cors');
-app.use(cors());
+// Configure CORS to only allow requests from your domain
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc)
+    // But for browser requests, only allow from your domain
+    const allowedOrigins = [
+      'https://www.vidscript.co',
+      'https://vidscript.co'
+    ];
+    
+    // In development, allow localhost
+    if (process.env.NODE_ENV !== 'production') {
+      allowedOrigins.push('http://localhost:3000');
+      allowedOrigins.push(undefined); // Allow requests with no origin in development
+    }
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`[SECURITY] Blocked request from unauthorized origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST'],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+
+// Rate limiting middleware
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for requests from your own domain
+    const referer = req.get('Referer');
+    if (referer) {
+      const refererUrl = new URL(referer);
+      return refererUrl.hostname === 'www.vidscript.co' || 
+             refererUrl.hostname === 'vidscript.co' ||
+             (process.env.NODE_ENV !== 'production' && refererUrl.hostname === 'localhost');
+    }
+    return false;
+  }
+});
+
+// Apply rate limiting to all requests
+app.use(apiLimiter);
+
+// Generate a unique token for each session
+app.use((req, res, next) => {
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+  }
+  next();
+});
+
+// Middleware to validate requests to protected endpoints
+const validateRequest = (req, res, next) => {
+  // Check if the request is coming from our own frontend
+  const referer = req.get('Referer');
+  const csrfToken = req.get('X-CSRF-Token');
+  const userAgent = req.get('User-Agent') || '';
+  
+  // Log the request details for debugging
+  console.log(`[SECURITY] Request to ${req.method} ${req.path}`);
+  console.log(`[SECURITY] Referer: ${referer || 'none'}`);
+  console.log(`[SECURITY] User-Agent: ${userAgent}`);
+  console.log(`[SECURITY] CSRF Token: ${csrfToken ? 'present' : 'missing'}`);
+  console.log(`[SECURITY] Session Token: ${req.session.csrfToken ? 'present' : 'missing'}`);
+  
+  // In production, block direct API calls (curl, postman, etc.)
+  if (process.env.NODE_ENV === 'production') {
+    const isDirect = userAgent.includes('curl') || 
+                    userAgent.includes('Postman') || 
+                    userAgent.includes('python-requests') ||
+                    userAgent.includes('wget') ||
+                    !referer;
+                    
+    if (isDirect) {
+      console.log('[SECURITY] Blocked direct API call in production');
+      return res.status(403).json({ error: 'Forbidden - Direct API access not allowed' });
+    }
+  } else {
+    // Skip validation in development for easier testing if it's a direct curl/postman request
+    if (userAgent.includes('curl') || userAgent.includes('Postman') || !referer) {
+      console.log('[SECURITY] Allowing direct API request in development mode');
+      return next();
+    }
+  }
+  
+  // Validate referer
+  if (!referer) {
+    console.log('[SECURITY] Blocked request with no referer');
+    return res.status(403).json({ error: 'Forbidden - Invalid request origin' });
+  }
+  
+  try {
+    const refererUrl = new URL(referer);
+    const validDomains = ['www.vidscript.co', 'vidscript.co'];
+    
+    // Allow localhost in development
+    if (process.env.NODE_ENV !== 'production') {
+      validDomains.push('localhost');
+    }
+    
+    if (!validDomains.some(domain => refererUrl.hostname === domain || refererUrl.hostname.endsWith('.' + domain))) {
+      console.log(`[SECURITY] Blocked request from invalid referer: ${referer}`);
+      return res.status(403).json({ error: 'Forbidden - Invalid request origin' });
+    }
+    
+    // Validate CSRF token
+    if (!csrfToken || csrfToken !== req.session.csrfToken) {
+      console.log('[SECURITY] Blocked request with invalid CSRF token');
+      return res.status(403).json({ error: 'Forbidden - Invalid security token' });
+    }
+    
+    next();
+  } catch (error) {
+    console.error(`[SECURITY] Error validating request: ${error.message}`);
+    return res.status(403).json({ error: 'Forbidden - Invalid request' });
+  }
+};
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -289,7 +416,7 @@ app.get('/user-details', requireAuth(), async (req, res) => {
 });
 
 // Transcribe route
-app.post('/transcribe', async (req, res) => {
+app.post('/transcribe', validateRequest, async (req, res) => {
   const youtubeUrl = req.body.url;
   const videoId = getYouTubeVideoId(youtubeUrl);
 
@@ -398,7 +525,7 @@ app.post('/transcribe', async (req, res) => {
   }
 });
 
-app.get('/transcribe/:videoId/:lang', async (req, res) => {
+app.get('/transcribe/:videoId/:lang', validateRequest, async (req, res) => {
   const videoId = req.params.videoId;
   const selectedLanguage = req.params.lang;
   const auth = getAuth(req);
@@ -589,6 +716,11 @@ app.get('/usage-count', async (req, res) => {
       remainingUses: FREE_USER_MAX_USES_PER_DAY
     });
   }
+});
+
+// Add a route to get the CSRF token
+app.get('/csrf-token', (req, res) => {
+  res.json({ csrfToken: req.session.csrfToken });
 });
 
 app.listen(port, () => {

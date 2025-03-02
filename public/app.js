@@ -12,6 +12,32 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModalBtn = document.getElementById('close-modal-btn');
   const buttonText = document.getElementById('buttonText');
 
+  // Store CSRF token
+  let csrfToken = '';
+
+  // Fetch CSRF token on page load
+  fetchCsrfToken();
+
+  // Function to fetch CSRF token
+  function fetchCsrfToken() {
+    fetch('/csrf-token')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        csrfToken = data.csrfToken;
+        console.log('[SECURITY] CSRF token fetched successfully');
+      })
+      .catch(error => {
+        console.error('[SECURITY] Failed to fetch CSRF token:', error);
+        // Retry after 3 seconds
+        setTimeout(fetchCsrfToken, 3000);
+      });
+  }
+
   // Create usage counter element
   const usageCounterContainer = document.createElement('div');
   usageCounterContainer.className = 'usage-counter text-sm text-center mx-auto mb-4';
@@ -114,6 +140,13 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // If CSRF token is not available, fetch it first
+    if (!csrfToken) {
+      fetchCsrfToken();
+      setTimeout(transcribeVideo, 1000); // Retry after 1 second
+      return;
+    }
+
     // Change button to loading state
     transcribeBtn.disabled = true;
     buttonText.textContent = 'Loading...';
@@ -126,7 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch('/transcribe', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
       },
       body: JSON.stringify({ url })
     })
@@ -190,6 +224,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 errorContainer.remove();
               }, 500);
             }, 10000);
+          } else if (status === 403) {
+            // Security error - refresh the CSRF token and show error
+            fetchCsrfToken();
+            alert('Security error: ' + data.error + '. Please try again.');
           } else {
             // Regular error alert for non-rate-limit errors
             alert('Error: ' + data.error);
@@ -241,8 +279,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function handleLanguageSelection(videoId, languageCode) {
     console.log(`Language selected: ${languageCode}`);
+    
+    // If CSRF token is not available, fetch it first
+    if (!csrfToken) {
+      await new Promise(resolve => {
+        fetchCsrfToken();
+        setTimeout(resolve, 1000);
+      });
+      
+      // If still not available, show error
+      if (!csrfToken) {
+        alert('Could not secure the request. Please refresh the page and try again.');
+        return;
+      }
+    }
+    
     try {
-      const response = await fetch(`/transcribe/${videoId}/${languageCode}`);
+      const response = await fetch(`/transcribe/${videoId}/${languageCode}`, {
+        headers: {
+          'X-CSRF-Token': csrfToken
+        }
+      });
+      
+      // Check if it's a security error
+      if (response.status === 403) {
+        const errorData = await response.json();
+        console.error('Security error:', errorData.error);
+        fetchCsrfToken(); // Refresh the token
+        alert('Security error: ' + errorData.error + '. Please try again.');
+        return;
+      }
+      
       const transcriptData = await response.json();
       console.log('Transcript data received for selected language:', transcriptData);
 
@@ -251,6 +318,9 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Error: ' + transcriptData.error);
         return;
       }
+
+      // Update usage count after successful transcription
+      updateUsageCount();
 
       const savedTranscript = transcriptData.savedTranscripts.find(transcript => transcript.languageCode === languageCode);
       if (savedTranscript) {
@@ -261,8 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('No transcript found for the selected language');
       }
     } catch (error) {
-      console.error('An error occurred while fetching the transcription:', error);
-      alert('An error occurred while fetching the transcription');
+      console.error('Error fetching transcript:', error);
+      alert('An error occurred while fetching the transcript. Please try again.');
     }
   }
 
