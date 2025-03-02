@@ -44,10 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
   usageCounterContainer.id = 'usage-counter';
   usageCounterContainer.textContent = 'Loading usage information...';
 
-  // Insert the usage counter before the input container
+  // Insert the usage counter after the input container
   const inputContainer = document.querySelector('.input-container');
   if (inputContainer && inputContainer.parentNode) {
-    inputContainer.parentNode.insertBefore(usageCounterContainer, inputContainer);
+    inputContainer.parentNode.insertBefore(usageCounterContainer, inputContainer.nextSibling);
   }
 
   // Function to fetch and update usage count
@@ -193,16 +193,16 @@ document.addEventListener('DOMContentLoaded', () => {
           if (status === 429) {
             // Create a more user-friendly rate limit message
             const errorContainer = document.createElement('div');
-            errorContainer.className = 'alert alert-error shadow-lg mb-4';
+            errorContainer.className = 'alert alert-error shadow-lg mb-4 rate-limit-banner';
             errorContainer.innerHTML = `
-              <div>
+              <div class="content">
                 <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 <div>
                   <h3 class="font-bold">Rate Limit Reached</h3>
-                  <div class="text-xs">${data.error}</div>
-                  ${!window.Clerk?.user ? '<div class="mt-2"><button id="signInBtn" class="btn btn-sm btn-primary">Sign In for More Uses</button></div>' : ''}
+                  <div class="text-xs">Daily maximum of 2 uses for free accounts. Please sign up for more uses (3 per day).</div>
                 </div>
               </div>
+              ${!window.Clerk?.user ? '<div class="sign-in-button"><button id="signInBtn" class="btn btn-sm btn-primary">SIGN IN FOR MORE USES</button></div>' : ''}
             `;
             
             // Insert the error message at the top of the page

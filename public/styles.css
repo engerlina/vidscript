@@ -247,6 +247,24 @@ svg.fill-current {
   animation: pulse-danger 2s infinite;
 }
 
+/* Rate limit banner styling */
+.rate-limit-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+}
+
+.rate-limit-banner .content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rate-limit-banner .sign-in-button {
+  margin-left: auto;
+}
+
 @keyframes pulse-warning {
   0% {
     box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
