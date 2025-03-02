@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Function to fetch CSRF token
   function fetchCsrfToken() {
+    // First check session status
+    checkSessionStatus();
+    
     fetch('/csrf-token', {
       credentials: 'include' // Important: include cookies with the request
     })
@@ -40,6 +43,20 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('[SECURITY] Failed to fetch CSRF token:', error);
         // Retry after 3 seconds
         setTimeout(fetchCsrfToken, 3000);
+      });
+  }
+  
+  // Function to check session status
+  function checkSessionStatus() {
+    fetch('/debug-session', {
+      credentials: 'include'
+    })
+      .then(response => response.json())
+      .then(data => {
+        console.log('[DEBUG] Session status:', data);
+      })
+      .catch(error => {
+        console.error('[DEBUG] Failed to check session status:', error);
       });
   }
 
@@ -784,4 +801,21 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Start Clerk initialization
   initClerk();
+
+  // Add a debug button in development mode
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    const debugButton = document.createElement('button');
+    debugButton.textContent = 'Debug Session';
+    debugButton.className = 'btn btn-sm btn-outline btn-warning mt-2';
+    debugButton.addEventListener('click', () => {
+      checkSessionStatus();
+      alert('Session status checked. See console for details.');
+    });
+    
+    // Add it after the usage counter
+    const usageCounter = document.getElementById('usage-counter');
+    if (usageCounter && usageCounter.parentNode) {
+      usageCounter.parentNode.insertBefore(debugButton, usageCounter.nextSibling);
+    }
+  }
 });
