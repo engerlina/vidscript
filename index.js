@@ -29,20 +29,6 @@ app.use((req, res, next) => {
   // Get the publishable key from environment variables
   const publishableKey = process.env.CLERK_PUBLISHABLE_KEY?.trim();
   
-  // Log the key for debugging
-  console.log("Setting Clerk publishable key:", publishableKey);
-  console.log("Trimmed key:", publishableKey);
-  console.log("Publishable key length:", publishableKey?.length);
-  console.log("Publishable key first 10 chars:", publishableKey?.substring(0, 10));
-  console.log("Is key valid format:", publishableKey?.startsWith("pk_"));
-  
-  // Validate the key
-  if (!publishableKey) {
-    console.warn("Missing Clerk publishable key. Authentication will not work.");
-  } else if (!publishableKey.startsWith("pk_")) {
-    console.warn("Invalid Clerk publishable key format. Key should start with 'pk_'.");
-  }
-  
   // Make the key available to all views
   res.locals.clerkPublishableKey = publishableKey;
   next();
@@ -160,7 +146,6 @@ const getAvailableLanguages = async (videoId) => {
 
     return availableLanguages;
   } catch (error) {
-    console.error(`An error occurred while fetching available languages: ${error.message}`);
     return [];
   }
 };
@@ -184,10 +169,8 @@ const getTranscriptAndSave = async (videoId, selectedLanguage, identifier, isLog
     const subtitlesText = subtitles.map(entry => entry.text).join('\n');
     fs.writeFileSync(txtFilePath, subtitlesText);
 
-    console.log(`Subtitles saved to ${csvFilename} and ${txtFilename}`);
     return { txtFilename, csvFilename, subtitlesText };
   } catch (error) {
-    console.error(`An error occurred: ${error.message}`);
     throw error;
   }
 };
@@ -195,7 +178,6 @@ const getTranscriptAndSave = async (videoId, selectedLanguage, identifier, isLog
 // Test route to verify authentication
 app.get('/test-auth', requireAuth(), (req, res) => {
   const auth = getAuth(req);
-  console.log('Request auth object:', auth);
   res.json({ auth });
 });
 
@@ -206,7 +188,6 @@ app.get('/user-details', requireAuth(), async (req, res) => {
     const user = await clerkClient.users.getUser(userId);
     res.json(user);
   } catch (error) {
-    console.error('Error retrieving user details:', error);
     res.status(500).json({ error: 'Error retrieving user details' });
   }
 });
@@ -217,40 +198,28 @@ app.post('/transcribe', async (req, res) => {
   const videoId = getYouTubeVideoId(youtubeUrl);
 
   if (!videoId) {
-    console.error('Invalid video ID');
     return res.status(400).json({ error: 'Invalid YouTube URL' });
   }
 
   const auth = getAuth(req);
-  console.log('Request auth object:', auth);
-
   const isLoggedIn = !!auth?.userId;
   let identifier = req.sessionID;
   let userIdentifier = req.sessionID;
 
   if (isLoggedIn) {
     try {
-      console.log('User is logged in. Fetching user details...');
       const userId = auth.userId;
       const user = await clerkClient.users.getUser(userId);
-      console.log('User details:', user);
       const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
-      console.log('Primary email:', primaryEmail);
       if (primaryEmail) {
         userIdentifier = primaryEmail.emailAddress;
         identifier = userIdentifier;
-        console.log('User identifier set to:', userIdentifier);
-      } else {
-        console.log('Primary email not found');
       }
     } catch (error) {
-      console.error('An error occurred while retrieving user email:', error);
       // Fallback to using req.sessionID as identifier
       identifier = req.sessionID;
       userIdentifier = req.sessionID;
     }
-  } else {
-    console.log('User is not logged in');
   }
 
   if (!isLoggedIn && req.session.usageCount >= MAX_USES_PER_DAY) {
@@ -259,10 +228,8 @@ app.post('/transcribe', async (req, res) => {
 
   try {
     const availableLanguages = await getAvailableLanguages(videoId);
-    console.log('Available languages:', availableLanguages);
 
     if (availableLanguages.length === 0) {
-      console.log(`No captions found for video: ${videoId}`);
       return res.status(404).json({ error: 'No captions found for the video' });
     }
 
@@ -289,7 +256,6 @@ app.post('/transcribe', async (req, res) => {
       res.json({ languageCodes: availableLanguages, savedTranscripts: [] });
     }
   } catch (error) {
-    console.error(`An error occurred: ${error.message}`);
     res.status(500).json({ error: 'An error occurred while fetching the subtitles.' });
   }
 });
@@ -312,7 +278,6 @@ app.get('/transcribe/:videoId/:lang', async (req, res) => {
       savedTranscripts: [{ languageCode: selectedLanguage, txtFilename, csvFilename, subtitlesText }]
     });
   } catch (error) {
-    console.error(`An error occurred: ${error.message}`);
     res.status(500).json({ error: 'An error occurred while fetching the subtitles.' });
   }
 });
@@ -334,18 +299,13 @@ app.get('/download-csv/:filename', (req, res) => {
 });
 
 cron.schedule('0 * * * *', () => {
-  console.log('Running deleteOldTranscripts.js script');
-
   exec('node deleteOldTranscripts.js', (error, stdout, stderr) => {
     if (error) {
-      console.error(`Error executing script: ${error.message}`);
       return;
     }
     if (stderr) {
-      console.error(`Script stderr: ${stderr}`);
       return;
     }
-    console.log(`Script output: ${stdout}`);
   });
 });
 
@@ -354,5 +314,5 @@ app.get('/modal', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  // Server is running silently
 });

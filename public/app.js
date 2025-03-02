@@ -208,7 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
     buttons.forEach(button => {
       if (button) {
         button.disabled = true;
-        console.log(`Disabled button: ${button.id}`);
       }
     });
   };
@@ -219,217 +218,87 @@ document.addEventListener('DOMContentLoaded', () => {
     buttons.forEach(button => {
       if (button) {
         button.disabled = false;
-        console.log(`Enabled button: ${button.id}`);
       }
     });
   };
   
-  // Function to check if Clerk components are ready
   function areClerkComponentsReady() {
     // First check our custom flag
     if (window.__clerkComponentsReady === true) {
-        console.log("[DEBUG] areClerkComponentsReady: true (from __clerkComponentsReady flag)");
         return true;
     }
     
     // Double-check with Clerk's internal state if possible
-    try {
-      // Check if Clerk exists and has been initialized
-      if (!window.Clerk) {
-        console.log("[DEBUG] areClerkComponentsReady: false (Clerk object doesn't exist)");
-        return false;
-      }
-      
-      // Check if publishable key is set
-      if (!window.Clerk.publishableKey) {
-        console.log("[DEBUG] areClerkComponentsReady: false (publishableKey not set)");
-        // Try to set it if we have it stored
-        if (typeof CLERK_KEY !== 'undefined') {
-          console.log("[DEBUG] Setting publishable key from CLERK_KEY variable");
-          window.Clerk.publishableKey = CLERK_KEY;
-        }
-        return false;
-      }
-      
-      // Check if components exist and are ready
-      if (window.Clerk.components && 
-          typeof window.Clerk.components.isReady === 'boolean' && 
-          window.Clerk.components.isReady === true) {
-        console.log("[DEBUG] areClerkComponentsReady: true (from Clerk.components.isReady)");
+    if (window.Clerk && window.Clerk.components && window.Clerk.components.ready) {
         return true;
-      }
-      
-      // Check if we can access our custom internal ready state
-      if (window.Clerk.components && 
-          typeof window.Clerk.components.__internal_isReady === 'boolean' && 
-          window.Clerk.components.__internal_isReady === true) {
-        console.log("[DEBUG] areClerkComponentsReady: true (from __internal_isReady)");
-        return true;
-      }
-      
-      // Check if we can open sign-in (functional check)
-      if (typeof window.Clerk.openSignIn === 'function') {
-        console.log("[DEBUG] areClerkComponentsReady: true (openSignIn is available)");
-        // If we can open sign-in, components are probably ready
-        window.__clerkComponentsReady = true;
-        return true;
-      }
-      
-      console.log("[DEBUG] areClerkComponentsReady: false (no readiness indicators found)");
-      return false;
-    } catch (error) {
-      console.error("[DEBUG] Error in areClerkComponentsReady:", error);
-      return false;
-    }
-  }
-  
-  // Function to wait for Clerk components to be ready
-  function waitForClerkComponents(callback, maxAttempts = 10) {
-    let attempts = 0;
-    
-    function checkComponents() {
-      attempts++;
-      console.log(`[DEBUG] Checking if Clerk components are ready (attempt ${attempts}/${maxAttempts})`);
-      
-      // Check if components are ready
-      if (areClerkComponentsReady()) {
-        console.log("[DEBUG] Clerk components are ready, proceeding with callback");
-        callback();
-        return;
-      }
-      
-      // If Clerk is initialized but components aren't ready, try to fix it
-      if (isClerkInitialized() && !areClerkComponentsReady()) {
-        // Check if the publishable key is missing
-        if (!window.Clerk.publishableKey && window.CLERK_PUBLISHABLE_KEY) {
-          console.log("[DEBUG] Setting missing publishable key in waitForClerkComponents");
-          window.Clerk.publishableKey = window.CLERK_PUBLISHABLE_KEY;
-          
-          // Try to manually initialize components if needed
-          if (typeof window.Clerk.load === 'function' && !window.__clerkLoadCalled) {
-            console.log("[DEBUG] Manually calling Clerk.load() in waitForClerkComponents");
-            window.__clerkLoadCalled = true;
-            
-            try {
-              window.Clerk.load({
-                publishableKey: window.CLERK_PUBLISHABLE_KEY,
-                afterLoaded: () => {
-                  console.log("[DEBUG] Manual Clerk.load afterLoaded callback fired");
-                  window.__clerkComponentsReady = true;
-                  callback();
-                }
-              });
-              return; // Wait for the callback
-            } catch (e) {
-              console.error("[DEBUG] Error during manual Clerk.load():", e);
-            }
-          }
-        }
-      }
-      
-      // If we've reached the maximum number of attempts, proceed anyway
-      if (attempts >= maxAttempts) {
-        console.log("[DEBUG] Max attempts reached, proceeding anyway");
-        
-        // Force components to be ready as a last resort
-        if (isClerkInitialized()) {
-          console.log("[DEBUG] Forcing components ready state");
-          window.__clerkComponentsReady = true;
-          
-          // Create the internal ready state proxy if it doesn't exist
-          if (window.Clerk && window.Clerk.components && !('__internal_isReady' in window.Clerk.components)) {
-            Object.defineProperty(window.Clerk.components, '__internal_isReady', {
-              get: function() { return true; }
-            });
-          }
-        }
-        
-        callback();
-        return;
-      }
-      
-      // Try again after a short delay
-      setTimeout(checkComponents, 100);
     }
     
-    // Start checking
-    checkComponents();
+    // Check if we have the necessary components
+    if (window.Clerk && 
+        typeof window.Clerk.mountSignIn === 'function' && 
+        typeof window.Clerk.mountSignUp === 'function') {
+        return true;
+    }
+    
+    return false;
   }
-  
+
   // Function to handle sign-in
   function handleSignIn(e) {
     e.preventDefault();
-    console.log('[DEBUG] Sign-in function called');
     
-    // Wait for Clerk components to be ready
-    waitForClerkComponents(() => {
-      try {
-        // Check if Clerk is initialized
-        if (!isClerkInitialized()) {
-          console.error('[DEBUG] Clerk is not initialized');
-          alert('Authentication system is not ready. Please try again in a moment.');
-          return;
-        }
-        
-        // Check if the publishable key is missing
-        if (!window.Clerk.publishableKey && window.CLERK_PUBLISHABLE_KEY) {
-          console.log("[DEBUG] Setting missing publishable key in handleSignIn");
-          window.Clerk.publishableKey = window.CLERK_PUBLISHABLE_KEY;
-        }
-        
-        // Open the sign-in modal
-        console.log('[DEBUG] Calling Clerk.openSignIn()');
-        window.Clerk.openSignIn({
-          fallbackRedirectUrl: window.location.href,
-        });
-      } catch (error) {
-        console.error('[DEBUG] Error opening sign-in modal:', error);
-        alert('There was an error opening the sign-in modal. Please try again.');
-      }
-    });
+    // Check if Clerk is initialized
+    if (!isClerkInitialized()) {
+      alert('Authentication system is not ready. Please try again in a moment.');
+      return;
+    }
+    
+    // Check if the publishable key is missing
+    if (!window.Clerk.publishableKey && window.CLERK_PUBLISHABLE_KEY) {
+      window.Clerk.publishableKey = window.CLERK_PUBLISHABLE_KEY;
+    }
+    
+    // Open the sign-in modal
+    try {
+      window.Clerk.openSignIn({
+        fallbackRedirectUrl: window.location.href,
+      });
+    } catch (error) {
+      alert('There was an error opening the sign-in modal. Please try again.');
+    }
   }
   
   // Function to handle sign-up
   function handleSignUp(e) {
     e.preventDefault();
-    console.log('[DEBUG] Sign-up function called');
     
-    // Wait for Clerk components to be ready
-    waitForClerkComponents(() => {
-      try {
-        // Check if Clerk is initialized
-        if (!isClerkInitialized()) {
-          console.error('[DEBUG] Clerk is not initialized');
-          alert('Authentication system is not ready. Please try again in a moment.');
-          return;
-        }
-        
-        // Check if the publishable key is missing
-        if (!window.Clerk.publishableKey && window.CLERK_PUBLISHABLE_KEY) {
-          console.log("[DEBUG] Setting missing publishable key in handleSignUp");
-          window.Clerk.publishableKey = window.CLERK_PUBLISHABLE_KEY;
-        }
-        
-        // Open the sign-up modal
-        console.log('[DEBUG] Calling Clerk.openSignUp()');
-        window.Clerk.openSignUp({
-          fallbackRedirectUrl: window.location.href,
-        });
-      } catch (error) {
-        console.error('[DEBUG] Error opening sign-up modal:', error);
-        alert('There was an error opening the sign-up modal. Please try again.');
-      }
-    });
+    // Check if Clerk is initialized
+    if (!isClerkInitialized()) {
+      alert('Authentication system is not ready. Please try again in a moment.');
+      return;
+    }
+    
+    // Check if the publishable key is missing
+    if (!window.Clerk.publishableKey && window.CLERK_PUBLISHABLE_KEY) {
+      window.Clerk.publishableKey = window.CLERK_PUBLISHABLE_KEY;
+    }
+    
+    // Open the sign-up modal
+    try {
+      window.Clerk.openSignUp({
+        fallbackRedirectUrl: window.location.href,
+      });
+    } catch (error) {
+      alert('There was an error opening the sign-up modal. Please try again.');
+    }
   }
   
   // Helper function to handle sign out
   function handleSignOut(e) {
     e.preventDefault();
-    console.log("[DEBUG] Sign-out function called");
     
     // Check if Clerk is initialized
     if (!window.Clerk) {
-      console.error("[DEBUG] Clerk is not initialized, cannot sign out");
       return;
     }
     
@@ -437,22 +306,19 @@ document.addEventListener('DOMContentLoaded', () => {
       // Call Clerk's signOut method
       window.Clerk.signOut()
         .then(() => {
-          console.log("[DEBUG] User signed out successfully");
           // Update UI to reflect signed out state
           updateUIForAuthState(null);
         })
         .catch(error => {
-          console.error("[DEBUG] Error signing out:", error);
+          // Silent error handling
         });
     } catch (error) {
-      console.error("[DEBUG] Error during sign out:", error);
+      // Silent error handling
     }
   }
   
   // Function to set up the auth buttons
   function setupAuthButtons() {
-    console.log('Setting up auth buttons');
-    
     // Initially disable the buttons
     disableAuthButtons();
     
@@ -466,9 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const newSignInButton = document.getElementById('sign-in-button');
       
       newSignInButton.addEventListener('click', handleSignIn);
-      console.log('Added click listener to sign-in button');
-    } else {
-      console.warn('Sign-in button not found');
     }
     
     if (signUpButton) {
@@ -477,9 +340,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const newSignUpButton = document.getElementById('sign-up-button');
       
       newSignUpButton.addEventListener('click', handleSignUp);
-      console.log('Added click listener to sign-up button');
-    } else {
-      console.warn('Sign-up button not found');
     }
 
     // Buttons for smaller screens (dropdown)
@@ -492,9 +352,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const newDropdownSignInButton = document.getElementById('dropdown-sign-in-button');
       
       newDropdownSignInButton.addEventListener('click', handleSignIn);
-      console.log('Added click listener to dropdown sign-in button');
-    } else {
-      console.warn('Dropdown Sign-in button not found');
     }
     
     if (dropdownSignUpButton) {
@@ -503,15 +360,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const newDropdownSignUpButton = document.getElementById('dropdown-sign-up-button');
       
       newDropdownSignUpButton.addEventListener('click', handleSignUp);
-      console.log('Added click listener to dropdown sign-up button');
-    } else {
-      console.warn('Dropdown Sign-up button not found');
     }
   }
   
   function setupSignOutButtons() {
-    console.log("[DEBUG] Setting up sign-out buttons");
-    
     // Get all sign-out buttons
     const signOutButtons = document.querySelectorAll('#sign-out-button, #sign-out-button-small');
     
@@ -523,7 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Add the event listener
         button.addEventListener('click', handleSignOut);
-        console.log(`[DEBUG] Added click listener to sign-out button: ${button.id}`);
       }
     });
   }
@@ -539,10 +390,8 @@ document.addEventListener('DOMContentLoaded', () => {
           try {
             window.Clerk.openUserProfile();
           } catch (error) {
-            console.error('Error opening user profile:', error);
+            // Silent error handling
           }
-        } else {
-          console.error('Clerk not available for user profile');
         }
       });
     }
@@ -554,10 +403,8 @@ document.addEventListener('DOMContentLoaded', () => {
           try {
             window.Clerk.openUserProfile();
           } catch (error) {
-            console.error('Error opening user profile:', error);
+            // Silent error handling
           }
-        } else {
-          console.error('Clerk not available for small user profile');
         }
       });
     }
@@ -565,8 +412,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Function to update UI based on user authentication state
   function updateUIForAuthState(user) {
-    console.log("[DEBUG] Updating UI for auth state:", user ? "Signed in" : "Signed out");
-    
     const userButtons = document.getElementById('userButtons');
     const userAvatar = document.getElementById('userAvatar');
     const userAvatarDropdown = document.getElementById('userAvatarDropdown');
@@ -575,7 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (user) {
       // User is signed in
-      console.log("[DEBUG] User is signed in, updating UI");
       
       // Hide sign-in/sign-up buttons
       if (userButtons) {
@@ -594,11 +438,9 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Set user avatar image
       if (user.imageUrl) {
-        console.log("[DEBUG] Setting user avatar image:", user.imageUrl);
         if (userAvatarImg) userAvatarImg.src = user.imageUrl;
         if (userAvatarImgSmall) userAvatarImgSmall.src = user.imageUrl;
       } else {
-        console.log("[DEBUG] No user image available, using default");
         const defaultImage = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
         if (userAvatarImg) userAvatarImg.src = defaultImage;
         if (userAvatarImgSmall) userAvatarImgSmall.src = defaultImage;
@@ -613,7 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     } else {
       // User is signed out
-      console.log("[DEBUG] User is signed out, updating UI");
       
       // Show sign-in/sign-up buttons
       if (userButtons) {
@@ -633,10 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setupClerkListeners() {
-    console.log("[DEBUG] Setting up Clerk listeners");
-    
     if (!window.Clerk) {
-      console.log("[DEBUG] Clerk not available for listeners");
       return;
     }
     
@@ -646,8 +484,6 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Listen for auth state changes
       window.Clerk.addListener(({ user }) => {
-        console.log("[DEBUG] Clerk auth state changed:", user ? "Signed in" : "Signed out");
-        
         // Update UI based on auth state
         updateUIForAuthState(user);
         
@@ -659,38 +495,30 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Check current user state
       if (window.Clerk.user) {
-        console.log("[DEBUG] User already signed in:", window.Clerk.user.fullName || window.Clerk.user.primaryEmailAddress);
         updateUIForAuthState(window.Clerk.user);
         setupSignOutButtons();
       } else {
-        console.log("[DEBUG] No user currently signed in");
         updateUIForAuthState(null);
       }
     } catch (error) {
-      console.error("[DEBUG] Error setting up Clerk listeners:", error);
+      // Silent error handling
     }
   }
   
   // Function to check if Clerk is properly initialized
   function isClerkInitialized() {
-    const initialized = window.Clerk && 
+    return window.Clerk && 
            typeof window.Clerk.openSignIn === 'function' && 
            typeof window.Clerk.openSignUp === 'function';
-    console.log("[DEBUG] isClerkInitialized check:", initialized);
-    return initialized;
   }
   
   // Function to check if Clerk is ready
   function isClerkReady() {
-    const ready = window.__clerkReady === true || (window.Clerk && typeof window.Clerk.openSignIn === 'function');
-    console.log("[DEBUG] isClerkReady check:", ready);
-    return ready;
+    return window.__clerkReady === true || (window.Clerk && typeof window.Clerk.openSignIn === 'function');
   }
   
   // Initialize Clerk integration
   function initClerk() {
-    console.log("[DEBUG] Initializing Clerk integration");
-    
     // Setup auth buttons
     setupAuthButtons();
     
@@ -699,11 +527,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check if Clerk is already initialized
     if (isClerkInitialized()) {
-      console.log("[DEBUG] Clerk is already initialized");
-      
       // Check if components are ready
       if (areClerkComponentsReady()) {
-        console.log("[DEBUG] Clerk components are already ready");
         enableAuthButtons();
         setupClerkListeners();
       }
@@ -711,14 +536,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Listen for Clerk components ready event
     document.addEventListener('clerk-components-ready', (e) => {
-      console.log("[DEBUG] clerk-components-ready event received", e.detail);
       enableAuthButtons();
       setupClerkListeners();
     });
     
     // Listen for Clerk ready event
     document.addEventListener('clerk-ready', (e) => {
-      console.log("[DEBUG] clerk-ready event received", e.detail);
       setupClerkListeners();
     });
     
@@ -729,16 +552,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkClerkReady = setInterval(() => {
       attempts++;
       
-      // Log every 10 attempts
-      if (attempts % 10 === 0) {
-        console.log(`[DEBUG] Still waiting for Clerk (check ${attempts}/${maxAttempts})`);
-        console.log("[DEBUG] Clerk debug info:", JSON.stringify(window.__clerkDebugInfo || {}));
-      }
-      
       // Check if Clerk is initialized and components are ready
       if (isClerkInitialized() && areClerkComponentsReady()) {
         clearInterval(checkClerkReady);
-        console.log("[DEBUG] Clerk components are now ready");
         enableAuthButtons();
         return;
       }
@@ -746,23 +562,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // If we've reached the maximum number of attempts, enable buttons anyway
       if (attempts >= maxAttempts) {
         clearInterval(checkClerkReady);
-        console.log("[DEBUG] Clerk initialization timed out after 3 seconds");
         enableAuthButtons();
-        
-        // Log the final state for debugging
-        console.log("[DEBUG] Final state at timeout:");
-        console.log("[DEBUG] window.Clerk exists:", !!window.Clerk);
-        console.log("[DEBUG] isClerkInitialized:", isClerkInitialized());
-        console.log("[DEBUG] isClerkReady:", isClerkReady());
-        console.log("[DEBUG] areClerkComponentsReady:", areClerkComponentsReady());
-        console.log("[DEBUG] Clerk debug info:", JSON.stringify(window.__clerkDebugInfo || {}));
         
         // Try to initialize Clerk directly as a last resort
         if (window.Clerk && !window.Clerk.publishableKey) {
-          console.log("[DEBUG] Attempting to set publishable key directly");
           if (typeof CLERK_KEY !== 'undefined') {
             window.Clerk.publishableKey = CLERK_KEY;
-            console.log("[DEBUG] Set publishable key to:", CLERK_KEY);
           } else {
             // Try to get the key from the meta tag
             const metaTag = document.querySelector('meta[name="clerk-publishable-key"]');
@@ -770,7 +575,6 @@ document.addEventListener('DOMContentLoaded', () => {
               const key = metaTag.getAttribute('content');
               if (key) {
                 window.Clerk.publishableKey = key;
-                console.log("[DEBUG] Set publishable key from meta tag:", key);
               }
             }
           }
