@@ -20,7 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Function to fetch CSRF token
   function fetchCsrfToken() {
-    fetch('/csrf-token')
+    fetch('/csrf-token', {
+      credentials: 'include' // Important: include cookies with the request
+    })
       .then(response => {
         if (!response.ok) {
           throw new Error(`Server responded with status: ${response.status}`);
@@ -28,6 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return response.json();
       })
       .then(data => {
+        if (data.error) {
+          throw new Error(data.error);
+        }
         csrfToken = data.csrfToken;
         console.log('[SECURITY] CSRF token fetched successfully');
       })
@@ -52,7 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Function to fetch and update usage count
   function updateUsageCount() {
-    fetch('/usage-count')
+    fetch('/usage-count', {
+      credentials: 'include' // Important: include cookies with the request
+    })
       .then(response => {
         // Check if the response is OK (status in the range 200-299)
         if (!response.ok) {
@@ -162,6 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Content-Type': 'application/json',
         'X-CSRF-Token': csrfToken
       },
+      credentials: 'include', // Important: include cookies with the request
       body: JSON.stringify({ url })
     })
       .then(response => {
@@ -296,9 +304,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     try {
       const response = await fetch(`/transcribe/${videoId}/${languageCode}`, {
+        method: 'GET',
         headers: {
           'X-CSRF-Token': csrfToken
-        }
+        },
+        credentials: 'include' // Important: include cookies with the request
       });
       
       // Check if it's a security error

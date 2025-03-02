@@ -86,7 +86,9 @@ app.use(session({
   saveUninitialized: true, // Changed to true to ensure session is created for all users
   cookie: {
     secure: process.env.NODE_ENV === 'production', // use secure cookies in production
-    maxAge: 1000 * 60 * 60 * 24 // 1 day
+    maxAge: 1000 * 60 * 60 * 24, // 1 day
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Allow cross-site cookies in production
+    domain: process.env.NODE_ENV === 'production' ? '.vidscript.co' : undefined // Set domain in production
   }
 }));
 
@@ -115,7 +117,7 @@ app.get(
 
 // Updated rate limits
 const FREE_USER_MAX_USES_PER_DAY = 2;
-const LOGGED_IN_USER_MAX_USES_PER_DAY = 3;
+const LOGGED_IN_USER_MAX_USES_PER_DAY = 20;
 const TRANSCRIPTS_FOLDER = path.join(__dirname, 'transcripts');
 
 // Configure CORS to only allow requests from your domain
@@ -175,7 +177,14 @@ app.use((req, res, next) => {
   if (!req.session.csrfToken) {
     req.session.csrfToken = crypto.randomBytes(32).toString('hex');
   }
-  next();
+  
+  // Force session save to ensure the token is persisted immediately
+  req.session.save(err => {
+    if (err) {
+      console.error('[SECURITY] Error saving session:', err);
+    }
+    next();
+  });
 });
 
 // Middleware to validate requests to protected endpoints
@@ -720,7 +729,23 @@ app.get('/usage-count', async (req, res) => {
 
 // Add a route to get the CSRF token
 app.get('/csrf-token', (req, res) => {
-  res.json({ csrfToken: req.session.csrfToken });
+  // Ensure the token exists
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+    
+    // Force session save to ensure the token is persisted immediately
+    req.session.save(err => {
+      if (err) {
+        console.error('[SECURITY] Error saving session:', err);
+        return res.status(500).json({ error: 'Failed to generate security token' });
+      }
+      console.log('[SECURITY] New CSRF token generated and saved to session');
+      res.json({ csrfToken: req.session.csrfToken });
+    });
+  } else {
+    console.log('[SECURITY] Existing CSRF token retrieved from session');
+    res.json({ csrfToken: req.session.csrfToken });
+  }
 });
 
 app.listen(port, () => {
