@@ -43,12 +43,20 @@ app.use(session({
   }),
   secret: process.env.SESSION_SECRET || 'default-secret',
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true, // Changed to true to ensure session is created for all users
   cookie: {
     secure: process.env.NODE_ENV === 'production', // use secure cookies in production
     maxAge: 1000 * 60 * 60 * 24 // 1 day
   }
 }));
+
+// Initialize session usage count
+app.use((req, res, next) => {
+  if (!req.session.usageCount) {
+    req.session.usageCount = 0;
+  }
+  next();
+});
 
 const clerkMiddleware = ClerkExpressWithAuth({
   publicKey: process.env.CLERK_PUBLISHABLE_KEY,
@@ -188,7 +196,7 @@ app.get('/user-details', ClerkExpressRequireAuth(), async (req, res) => {
 });
 
 // Transcribe route
-app.post('/transcribe', ClerkExpressRequireAuth(), async (req, res) => {
+app.post('/transcribe', async (req, res) => {
   const youtubeUrl = req.body.url;
   const videoId = getYouTubeVideoId(youtubeUrl);
 
@@ -243,7 +251,7 @@ app.post('/transcribe', ClerkExpressRequireAuth(), async (req, res) => {
 
     if (availableLanguages.length === 1) {
       const selectedLanguage = availableLanguages[0].code;
-      const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier);
+      const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier, isLoggedIn);
 
       if (!isLoggedIn) {
         req.session.usageCount++;
@@ -269,10 +277,10 @@ app.post('/transcribe', ClerkExpressRequireAuth(), async (req, res) => {
   }
 });
 
-app.get('/transcribe/:videoId/:lang', clerkMiddleware, async (req, res) => {
+app.get('/transcribe/:videoId/:lang', async (req, res) => {
   const videoId = req.params.videoId;
   const selectedLanguage = req.params.lang;
-  const isLoggedIn = !!req.auth.userId;
+  const isLoggedIn = !!req.auth?.userId;
   const identifier = isLoggedIn ? req.auth.userId : req.sessionID;
 
   try {
@@ -296,13 +304,13 @@ const getLanguageName = (code) => {
   return languageMap[code] || code;
 };
 
-app.get('/download-txt/:filename', clerkMiddleware, (req, res) => {
+app.get('/download-txt/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(TRANSCRIPTS_FOLDER, filename);
   res.download(filePath, filename);
 });
 
-app.get('/download-csv/:filename', clerkMiddleware, (req, res) => {
+app.get('/download-csv/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(TRANSCRIPTS_FOLDER, filename);
   res.download(filePath, filename);

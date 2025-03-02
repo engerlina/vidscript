@@ -210,108 +210,161 @@ document.addEventListener('DOMContentLoaded', () => {
     script.async = true;
     script.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
     script.crossOrigin = 'anonymous';
-    script.addEventListener('load', () => {
-      console.log('Clerk loaded successfully');
-
-      const userButtons = document.getElementById('userButtons');
-      const userAvatar = document.getElementById('userAvatar');
-      const userAvatarImg = document.getElementById('userAvatarImg');
-      const signOutButton = document.getElementById('sign-out-button');
-      const profileLink = document.getElementById('profile-link');
-      const hamburgerMenu = document.getElementById('hamburgerMenu');
-
-      if (profileLink) {
-        profileLink.addEventListener('click', () => {
-          window.Clerk.openUserProfile();
-        });
-      }
-
-      // Check if the user is signed in
-      console.log('Clerk components ready');
-
-      window.Clerk.addListener(({ user }) => {
-        if (user) {
-          // User is signed in
-          userButtons.style.display = 'none';
-          userAvatar.style.display = 'block';
-          userAvatarDropdown.style.display = 'block';
-          hamburgerMenu.style.display = 'none';
+    
+    // Disable buttons until Clerk is ready
+    const disableAuthButtons = () => {
+      const buttons = [
+        document.getElementById('sign-in-button'),
+        document.getElementById('sign-up-button'),
+        document.getElementById('dropdown-sign-in-button'),
+        document.getElementById('dropdown-sign-up-button')
+      ];
       
-          // Set the user's profile image URL
-          userAvatarImg.src = user.imageUrl;
-          userAvatarImgSmall.src = user.imageUrl;
-      
-          signOutButton.addEventListener('click', () => {
-            window.Clerk.signOut().then(() => {
-              location.reload();
-            });
-          });
-      
-          const signOutButtonSmall = document.getElementById('sign-out-button-small');
-          signOutButtonSmall.addEventListener('click', () => {
-            window.Clerk.signOut().then(() => {
-              location.reload();
-            });
-          });
-      
-          const profileLinkSmall = document.getElementById('profile-link-small');
-          if (profileLinkSmall) {
-            profileLinkSmall.addEventListener('click', () => {
-              window.Clerk.openUserProfile();
-            });
-          }
-        } else {
-          // User is not signed in
-          userButtons.style.display = 'block';
-          userAvatar.style.display = 'none';
-          userAvatarDropdown.style.display = 'none';
-          hamburgerMenu.style.display = 'block';
+      buttons.forEach(button => {
+        if (button) {
+          button.disabled = true;
         }
       });
+    };
+    
+    // Enable buttons when Clerk is ready
+    const enableAuthButtons = () => {
+      const buttons = [
+        document.getElementById('sign-in-button'),
+        document.getElementById('sign-up-button'),
+        document.getElementById('dropdown-sign-in-button'),
+        document.getElementById('dropdown-sign-up-button')
+      ];
+      
+      buttons.forEach(button => {
+        if (button) {
+          button.disabled = false;
+        }
+      });
+    };
+    
+    // Initially disable the buttons
+    disableAuthButtons();
+    
+    script.addEventListener('load', () => {
+      console.log('Clerk loaded successfully');
+      
+      // Wait for Clerk to be fully initialized
+      window.Clerk.load({
+        // No need to pass publishableKey again as it's already in the script tag
+      }).then(() => {
+        console.log('Clerk components ready');
+        enableAuthButtons();
+        
+        const userButtons = document.getElementById('userButtons');
+        const userAvatar = document.getElementById('userAvatar');
+        const userAvatarImg = document.getElementById('userAvatarImg');
+        const signOutButton = document.getElementById('sign-out-button');
+        const profileLink = document.getElementById('profile-link');
+        const hamburgerMenu = document.getElementById('hamburgerMenu');
+        const userAvatarDropdown = document.getElementById('userAvatarDropdown');
 
-      // Buttons for larger screens
-      const signInButton = document.getElementById('sign-in-button');
-      const signUpButton = document.getElementById('sign-up-button');
-      if (signInButton) {
-        signInButton.addEventListener('click', () => {
-          console.log('Sign-in button clicked');
-          window.Clerk.openSignIn();
-        });
-      } else {
-        console.warn('Sign-in button not found');
-      }
-      if (signUpButton) {
-        signUpButton.addEventListener('click', () => {
-          console.log('Sign-up button clicked');
-          window.Clerk.openSignUp();
-        });
-      } else {
-        console.warn('Sign-up button not found');
-      }
+        if (profileLink) {
+          profileLink.addEventListener('click', () => {
+            window.Clerk.openUserProfile();
+          });
+        }
 
-      // Buttons for smaller screens (dropdown)
-      const dropdownSignInButton = document.getElementById('dropdown-sign-in-button');
-      const dropdownSignUpButton = document.getElementById('dropdown-sign-up-button');
-      if (dropdownSignInButton) {
-        dropdownSignInButton.addEventListener('click', () => {
-          console.log('Dropdown Sign-in button clicked');
-          window.Clerk.openSignIn();
+        window.Clerk.addListener(({ user }) => {
+          if (user) {
+            // User is signed in
+            if (userButtons) userButtons.style.display = 'none';
+            if (userAvatar) userAvatar.style.display = 'block';
+            if (userAvatarDropdown) userAvatarDropdown.style.display = 'block';
+            if (hamburgerMenu) hamburgerMenu.style.display = 'none';
+        
+            // Set the user's profile image URL
+            if (userAvatarImg) userAvatarImg.src = user.imageUrl;
+            const userAvatarImgSmall = document.getElementById('userAvatarImgSmall');
+            if (userAvatarImgSmall) userAvatarImgSmall.src = user.imageUrl;
+        
+            if (signOutButton) {
+              signOutButton.addEventListener('click', () => {
+                window.Clerk.signOut().then(() => {
+                  location.reload();
+                });
+              });
+            }
+        
+            const signOutButtonSmall = document.getElementById('sign-out-button-small');
+            if (signOutButtonSmall) {
+              signOutButtonSmall.addEventListener('click', () => {
+                window.Clerk.signOut().then(() => {
+                  location.reload();
+                });
+              });
+            }
+        
+            const profileLinkSmall = document.getElementById('profile-link-small');
+            if (profileLinkSmall) {
+              profileLinkSmall.addEventListener('click', () => {
+                window.Clerk.openUserProfile();
+              });
+            }
+          } else {
+            // User is not signed in
+            if (userButtons) userButtons.style.display = 'block';
+            if (userAvatar) userAvatar.style.display = 'none';
+            if (userAvatarDropdown) userAvatarDropdown.style.display = 'none';
+            if (hamburgerMenu) hamburgerMenu.style.display = 'block';
+          }
         });
-      } else {
-        console.warn('Dropdown Sign-in button not found');
-      }
-      if (dropdownSignUpButton) {
-        dropdownSignUpButton.addEventListener('click', () => {
-          console.log('Dropdown Sign-up button clicked');
-          window.Clerk.openSignUp();
-        });
-      } else {
-        console.warn('Dropdown Sign-up button not found');
-      }
+
+        // Buttons for larger screens
+        const signInButton = document.getElementById('sign-in-button');
+        const signUpButton = document.getElementById('sign-up-button');
+        if (signInButton) {
+          signInButton.addEventListener('click', () => {
+            console.log('Sign-in button clicked');
+            window.Clerk.openSignIn();
+          });
+        } else {
+          console.warn('Sign-in button not found');
+        }
+        if (signUpButton) {
+          signUpButton.addEventListener('click', () => {
+            console.log('Sign-up button clicked');
+            window.Clerk.openSignUp();
+          });
+        } else {
+          console.warn('Sign-up button not found');
+        }
+
+        // Buttons for smaller screens (dropdown)
+        const dropdownSignInButton = document.getElementById('dropdown-sign-in-button');
+        const dropdownSignUpButton = document.getElementById('dropdown-sign-up-button');
+        if (dropdownSignInButton) {
+          dropdownSignInButton.addEventListener('click', () => {
+            console.log('Dropdown Sign-in button clicked');
+            window.Clerk.openSignIn();
+          });
+        } else {
+          console.warn('Dropdown Sign-in button not found');
+        }
+        if (dropdownSignUpButton) {
+          dropdownSignUpButton.addEventListener('click', () => {
+            console.log('Dropdown Sign-up button clicked');
+            window.Clerk.openSignUp();
+          });
+        } else {
+          console.warn('Dropdown Sign-up button not found');
+        }
+      }).catch(err => {
+        console.error('Error initializing Clerk:', err);
+        // Enable buttons anyway so users can still use the app without auth
+        enableAuthButtons();
+      });
     });
     
     script.addEventListener('error', (err) => {
       console.error('Error loading Clerk script:', err);
+      // Enable buttons anyway so users can still use the app without auth
+      enableAuthButtons();
     });
     
     document.head.appendChild(script);
