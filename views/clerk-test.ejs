@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clerk Test Page</title>
+</head>
+<body>
+    <h1>Clerk Test Page</h1>
+    <div id="status">Testing Clerk initialization...</div>
+    
+    <script>
+        // Get the publishable key directly from the server
+        const publishableKey = "<%= clerkPublishableKey %>";
+        document.getElementById('status').innerHTML += `<p>Publishable key: ${publishableKey}</p>`;
+        document.getElementById('status').innerHTML += `<p>Key length: ${publishableKey.length}</p>`;
+        
+        // Log each character and its code
+        let charCodes = "";
+        for (let i = 0; i < publishableKey.length; i++) {
+            charCodes += `Char at ${i}: ${publishableKey.charAt(i)} (${publishableKey.charCodeAt(i)})<br>`;
+        }
+        document.getElementById('status').innerHTML += `<p>${charCodes}</p>`;
+        
+        // Try loading Clerk with the data attribute approach
+        const script = document.createElement('script');
+        script.setAttribute("data-clerk-publishable-key", publishableKey);
+        script.async = true;
+        script.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js";
+        
+        script.onload = function() {
+            document.getElementById('status').innerHTML += `<p>Clerk script loaded successfully</p>`;
+            
+            // Check if Clerk is available
+            if (window.Clerk) {
+                document.getElementById('status').innerHTML += `<p>Clerk object is available after script load</p>`;
+                
+                // Use the correct method to detect when Clerk is ready
+                window.Clerk.addListener(({ user }) => {
+                    document.getElementById('status').innerHTML += `<p>Clerk has been loaded and initialized</p>`;
+                    document.getElementById('status').innerHTML += `<p>User authenticated: ${user ? 'Yes' : 'No'}</p>`;
+                    
+                    if (user) {
+                        document.getElementById('status').innerHTML += `<p>User ID: ${user.id}</p>`;
+                        document.getElementById('status').innerHTML += `<p>User email: ${user.primaryEmailAddress?.emailAddress || 'Not available'}</p>`;
+                    }
+                });
+                
+                // Create a button to open sign-in
+                const signInButton = document.createElement('button');
+                signInButton.textContent = 'Sign In';
+                signInButton.style.margin = '10px';
+                signInButton.style.padding = '8px 16px';
+                signInButton.onclick = function() {
+                    window.Clerk.openSignIn();
+                };
+                document.body.appendChild(signInButton);
+                
+                document.getElementById('status').innerHTML += `<p>Added sign-in button to test Clerk functionality</p>`;
+            } else {
+                document.getElementById('status').innerHTML += `<p>Clerk object not available after script load</p>`;
+            }
+        };
+        
+        script.onerror = function(error) {
+            document.getElementById('status').innerHTML += `<p>Error loading Clerk script: ${error}</p>`;
+        };
+        
+        document.head.appendChild(script);
+    </script>
+</body>
+</html> 

@@ -78,9 +78,58 @@
       </dialog>
       <%- include('footer') %>
     </div>
+    
+    <!-- First, load the Clerk script -->
+    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+    
     <script>
+        // Make the key available globally as it was before
         window.CLERK_PUBLISHABLE_KEY = '<%= clerkPublishableKey %>';
-      </script>
+        
+        // Store the key in a variable
+        const clerkKey = "<%= clerkPublishableKey %>";
+        console.log("Clerk key from server:", clerkKey);
+        
+        // Create a global variable to track Clerk's state
+        window.__clerkReady = false;
+        
+        document.addEventListener("DOMContentLoaded", async function() {
+            // First, check if the key is valid
+            if (!clerkKey || clerkKey.trim() === '') {
+                console.error("Clerk publishable key is empty or invalid");
+                document.dispatchEvent(new CustomEvent('clerk-ready', { detail: { success: false } }));
+                return;
+            }
+            
+            try {
+                // Initialize Clerk using the recommended pattern
+                console.log("Initializing Clerk with key:", clerkKey);
+                
+                // Create a new Clerk instance
+                const clerk = new Clerk(clerkKey);
+                
+                // Load Clerk
+                await clerk.load();
+                
+                // Set the global Clerk object
+                window.Clerk = clerk;
+                
+                console.log("Clerk initialized successfully");
+                window.__clerkReady = true;
+                
+                // Dispatch event to notify app.js
+                document.dispatchEvent(new CustomEvent('clerk-ready', { 
+                    detail: { success: true } 
+                }));
+            } catch (error) {
+                console.error("Error initializing Clerk:", error);
+                document.dispatchEvent(new CustomEvent('clerk-ready', { 
+                    detail: { success: false, error: error.message } 
+                }));
+            }
+        });
+    </script>
+    
     <script src="/app.js"></script>
   </body>
 </html>

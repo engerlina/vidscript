@@ -67,7 +67,25 @@ const clerkMiddleware = ClerkExpressWithAuth({
 app.use((req, res, next) => {
   // Log the key to verify it's being set correctly
   console.log('Setting Clerk publishable key:', process.env.CLERK_PUBLISHABLE_KEY);
-  res.locals.clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY;
+  
+  // Make sure we're passing a valid string, not undefined
+  if (process.env.CLERK_PUBLISHABLE_KEY) {
+    // Ensure the key is properly trimmed and doesn't have any whitespace
+    res.locals.clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY.trim();
+    console.log('Trimmed key:', res.locals.clerkPublishableKey);
+    
+    // Validate the key format (should start with pk_)
+    if (!res.locals.clerkPublishableKey.startsWith('pk_')) {
+      console.warn('WARNING: Clerk publishable key does not start with "pk_". This may cause authentication issues.');
+    }
+    
+    // Log key length to help with debugging
+    console.log('Publishable key length:', res.locals.clerkPublishableKey.length);
+  } else {
+    console.warn('CLERK_PUBLISHABLE_KEY environment variable is not set');
+    res.locals.clerkPublishableKey = ''; // Set to empty string to avoid undefined
+  }
+  
   next();
 });
 
@@ -116,6 +134,10 @@ app.get('/terms-of-service', (req, res) => {
 
 app.get('/test', (req, res) => {
   res.render('test', { url: req.protocol + '://' + req.get('host') + req.originalUrl });
+});
+
+app.get('/clerk-test', (req, res) => {
+  res.render('clerk-test', { url: req.protocol + '://' + req.get('host') + req.originalUrl });
 });
 
 const getYouTubeVideoId = (url) => {
