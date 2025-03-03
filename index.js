@@ -156,7 +156,8 @@ const corsOptions = {
     // But for browser requests, only allow from your domain
     const allowedOrigins = [
       'https://www.vidscript.co',
-      'https://vidscript.co'
+      'https://vidscript.co',
+      'https://staging.vidscript.co'
     ];
     
     // In development, allow localhost
