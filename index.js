@@ -88,16 +88,36 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production', // use secure cookies in production
     maxAge: 1000 * 60 * 60 * 24, // 1 day
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Allow cross-site cookies in production
-    domain: process.env.NODE_ENV === 'production' ? '.vidscript.co' : undefined // Set domain in production
+    domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN || '.vidscript.co' : undefined, // Set domain in production
+    httpOnly: true // Prevent client-side JS from reading the cookie
   }
 }));
 
+// Debug session configuration
+console.log(`[STARTUP] Session configuration: ${JSON.stringify({
+  secure: process.env.NODE_ENV === 'production',
+  maxAge: 1000 * 60 * 60 * 24,
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN || '.vidscript.co' : undefined,
+  httpOnly: true
+})}`);
+
 // Initialize session usage count
 app.use((req, res, next) => {
-  if (!req.session.usageCount) {
+  if (req.session.usageCount === undefined) {
     req.session.usageCount = 0;
+    // Force session save to ensure the count is initialized immediately
+    req.session.save(err => {
+      if (err) {
+        console.error('[ERROR] Failed to save session after initializing usage count:', err);
+      } else {
+        console.log(`[INFO] Session initialized with usage count: ${req.session.usageCount}`);
+      }
+      next();
+    });
+  } else {
+    next();
   }
-  next();
 });
 
 app.get(
@@ -513,7 +533,12 @@ app.post('/transcribe', validateRequest, async (req, res) => {
 
         // Increment usage count
         if (!isLoggedIn) {
-          req.session.usageCount++;
+          // Get the current count
+          const currentCount = req.session.usageCount || 0;
+          
+          // Increment the count
+          req.session.usageCount = currentCount + 1;
+          
           // Force session save to ensure the count is persisted immediately
           await new Promise((resolve, reject) => {
             req.session.save(err => {
@@ -615,7 +640,12 @@ app.get('/transcribe/:videoId/:lang', validateRequest, async (req, res) => {
 
     // Increment usage count
     if (!isLoggedIn) {
-      req.session.usageCount++;
+      // Get the current count
+      const currentCount = req.session.usageCount || 0;
+      
+      // Increment the count
+      req.session.usageCount = currentCount + 1;
+      
       // Force session save to ensure the count is persisted immediately
       await new Promise((resolve, reject) => {
         req.session.save(err => {

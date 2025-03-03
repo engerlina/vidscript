@@ -106,8 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Function to fetch and update usage count
   function updateUsageCount() {
+    console.log('[DEBUG] Fetching usage count...');
     fetch('/usage-count', {
-      credentials: 'include' // Important: include cookies with the request
+      credentials: 'include', // Important: include cookies with the request
+      cache: 'no-store' // Prevent caching of the response
     })
       .then(response => {
         // Check if the response is OK (status in the range 200-299)
@@ -302,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         transcribeBtn.disabled = false;
         
         // Update usage count after successful transcription
+        console.log('[DEBUG] Updating usage count after transcription');
         updateUsageCount();
         
         if (data.error) {
