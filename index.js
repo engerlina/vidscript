@@ -75,7 +75,7 @@ const pool = new Pool({
 })();
 
 // Middleware for session handling using PostgreSQL
-app.use(session({
+const sessionConfig = {
   store: new pgSession({
     pool: pool, // Connection pool
     tableName: 'session', // Use another table-name than the default "session" one
@@ -87,20 +87,28 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production', // use secure cookies in production
     maxAge: 1000 * 60 * 60 * 24, // 1 day
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Allow cross-site cookies in production
-    domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN || 'vidscript.co' : undefined, // Set domain in production without dot prefix
     httpOnly: true // Prevent client-side JS from reading the cookie
   }
-}));
+};
 
-// Debug session configuration
-console.log(`[STARTUP] Session configuration: ${JSON.stringify({
-  secure: process.env.NODE_ENV === 'production',
-  maxAge: 1000 * 60 * 60 * 24,
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN || 'vidscript.co' : undefined,
-  httpOnly: true
-})}`);
+// Configure cookies for production
+if (process.env.NODE_ENV === 'production') {
+  // In production, allow cross-site cookies with SameSite=None
+  sessionConfig.cookie.sameSite = 'none';
+  
+  // Set domain if provided, otherwise don't set it at all
+  if (process.env.COOKIE_DOMAIN) {
+    sessionConfig.cookie.domain = process.env.COOKIE_DOMAIN;
+  }
+  
+  console.log(`[STARTUP] Production session configuration: ${JSON.stringify(sessionConfig.cookie)}`);
+} else {
+  // In development, use lax SameSite
+  sessionConfig.cookie.sameSite = 'lax';
+  console.log(`[STARTUP] Development session configuration: ${JSON.stringify(sessionConfig.cookie)}`);
+}
+
+app.use(session(sessionConfig));
 
 // Initialize session usage count
 app.use((req, res, next) => {
@@ -504,14 +512,36 @@ app.post('/transcribe', validateRequest, async (req, res) => {
       // Continue with the request if we can't check the database
     }
   } else {
-    // For free users
-    if (req.session.usageCount >= FREE_USER_MAX_USES_PER_DAY) {
-      return res.status(429).json({ 
-        error: `Daily maximum of ${FREE_USER_MAX_USES_PER_DAY} uses for free accounts. Please sign up for more uses (${LOGGED_IN_USER_MAX_USES_PER_DAY} per day).` 
-      });
+    // For free users, check the database instead of relying solely on the session
+    try {
+      const result = await pool.query(
+        'SELECT COUNT(*) FROM transcriptions WHERE user_identifier = $1 AND request_datetime > NOW() - INTERVAL \'1 day\'',
+        [userIdentifier]
+      );
+      const usageCount = parseInt(result.rows[0].count);
+      
+      // Update the session with the correct count from the database
+      req.session.usageCount = usageCount;
+      
+      if (usageCount >= FREE_USER_MAX_USES_PER_DAY) {
+        return res.status(429).json({ 
+          error: `Daily maximum of ${FREE_USER_MAX_USES_PER_DAY} uses for free accounts. Please sign up for more uses (${LOGGED_IN_USER_MAX_USES_PER_DAY} per day).` 
+        });
+      }
+      
+      console.log(`[INFO] Free user has used ${usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today (from database)`);
+    } catch (error) {
+      console.error(`[ERROR] Failed to check usage from database: ${error.message}`);
+      
+      // Fall back to session-based counting if database check fails
+      if (req.session.usageCount >= FREE_USER_MAX_USES_PER_DAY) {
+        return res.status(429).json({ 
+          error: `Daily maximum of ${FREE_USER_MAX_USES_PER_DAY} uses for free accounts. Please sign up for more uses (${LOGGED_IN_USER_MAX_USES_PER_DAY} per day).` 
+        });
+      }
+      
+      console.log(`[INFO] Free user has used ${req.session.usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today (from session)`);
     }
-    
-    console.log(`[INFO] Free user has used ${req.session.usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today`);
   }
 
   try {
@@ -530,29 +560,6 @@ app.post('/transcribe', validateRequest, async (req, res) => {
       try {
         const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier, isLoggedIn);
         console.log(`[DEBUG] Transcript saved successfully: ${txtFilename}`);
-
-        // Increment usage count
-        if (!isLoggedIn) {
-          // Get the current count
-          const currentCount = req.session.usageCount || 0;
-          
-          // Increment the count
-          req.session.usageCount = currentCount + 1;
-          
-          // Force session save to ensure the count is persisted immediately
-          await new Promise((resolve, reject) => {
-            req.session.save(err => {
-              if (err) {
-                console.error('[ERROR] Failed to save session after incrementing usage count:', err);
-                reject(err);
-              } else {
-                console.log(`[INFO] Session saved with updated usage count: ${req.session.usageCount}`);
-                console.log(`[DEBUG] Session cookie after save:`, req.session.cookie);
-                resolve();
-              }
-            });
-          });
-        }
 
         // Store the transcription details in the database
         const transcriptFilename = path.parse(txtFilename).name;
@@ -638,29 +645,6 @@ app.get('/transcribe/:videoId/:lang', validateRequest, async (req, res) => {
 
   try {
     const { txtFilename, csvFilename, subtitlesText } = await getTranscriptAndSave(videoId, selectedLanguage, identifier, isLoggedIn);
-
-    // Increment usage count
-    if (!isLoggedIn) {
-      // Get the current count
-      const currentCount = req.session.usageCount || 0;
-      
-      // Increment the count
-      req.session.usageCount = currentCount + 1;
-      
-      // Force session save to ensure the count is persisted immediately
-      await new Promise((resolve, reject) => {
-        req.session.save(err => {
-          if (err) {
-            console.error('[ERROR] Failed to save session after incrementing usage count:', err);
-            reject(err);
-          } else {
-            console.log(`[INFO] Session saved with updated usage count: ${req.session.usageCount}`);
-            console.log(`[DEBUG] Session cookie after save:`, req.session.cookie);
-            resolve();
-          }
-        });
-      });
-    }
 
     // Store the transcription details in the database
     const transcriptFilename = path.parse(txtFilename).name;
@@ -802,27 +786,50 @@ app.get('/usage-count', async (req, res) => {
         });
       }
     } else {
-      // For free users, use the session count
-      const usageCount = req.session.usageCount || 0;
-      
-      console.log(`[INFO] Free user has used ${usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today`);
-      
-      // Force session save to ensure we're returning the most up-to-date count
-      await new Promise((resolve) => {
-        req.session.save(err => {
-          if (err) {
-            console.error('[ERROR] Failed to save session in usage-count endpoint:', err);
-          }
-          resolve();
+      // For free users, use the database count instead of session
+      try {
+        const result = await pool.query(
+          'SELECT COUNT(*) FROM transcriptions WHERE user_identifier = $1 AND request_datetime > NOW() - INTERVAL \'1 day\'',
+          [userIdentifier]
+        );
+        const usageCount = parseInt(result.rows[0].count);
+        
+        // Update the session with the correct count from the database
+        req.session.usageCount = usageCount;
+        
+        console.log(`[INFO] Free user has used ${usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today (from database)`);
+        
+        // Force session save to ensure we're returning the most up-to-date count
+        await new Promise((resolve) => {
+          req.session.save(err => {
+            if (err) {
+              console.error('[ERROR] Failed to save session in usage-count endpoint:', err);
+            }
+            resolve();
+          });
         });
-      });
-      
-      res.json({
-        isLoggedIn: false,
-        usageCount: usageCount,
-        maxUsageCount: FREE_USER_MAX_USES_PER_DAY,
-        remainingUses: FREE_USER_MAX_USES_PER_DAY - usageCount
-      });
+        
+        res.json({
+          isLoggedIn: false,
+          usageCount: usageCount,
+          maxUsageCount: FREE_USER_MAX_USES_PER_DAY,
+          remainingUses: FREE_USER_MAX_USES_PER_DAY - usageCount
+        });
+      } catch (error) {
+        console.error(`[ERROR] Failed to get usage count from database: ${error.message}`);
+        
+        // Fall back to session-based counting if database check fails
+        const usageCount = req.session.usageCount || 0;
+        
+        console.log(`[INFO] Free user has used ${usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today (from session fallback)`);
+        
+        res.json({
+          isLoggedIn: false,
+          usageCount: usageCount,
+          maxUsageCount: FREE_USER_MAX_USES_PER_DAY,
+          remainingUses: FREE_USER_MAX_USES_PER_DAY - usageCount
+        });
+      }
     }
   } catch (error) {
     // Catch-all error handler to ensure we always return JSON
@@ -908,31 +915,50 @@ app.get('/usage-limits', (req, res) => {
   });
 });
 
-// Add a route to reset usage count (development only)
-app.post('/reset-usage', validateRequest, (req, res) => {
-  // Only allow in development mode
-  if (process.env.NODE_ENV === 'production') {
-    console.log('[SECURITY] Attempted to reset usage count in production');
-    return res.status(403).json({ error: 'This endpoint is only available in development mode' });
-  }
-  
-  // Reset the usage count
-  req.session.usageCount = 0;
-  
-  // Force session save to ensure the count is persisted immediately
-  req.session.save(err => {
-    if (err) {
-      console.error('[ERROR] Failed to save session after resetting usage count:', err);
-      return res.status(500).json({ error: 'Failed to reset usage count' });
+// Add a route to reset usage count (for testing)
+app.post('/reset-usage', validateRequest, async (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const isLoggedIn = !!auth?.userId;
+    let userIdentifier = req.sessionID;
+
+    if (isLoggedIn) {
+      try {
+        const userId = auth.userId;
+        const user = await clerkClient.users.getUser(userId);
+        const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
+        if (primaryEmail) {
+          userIdentifier = primaryEmail.emailAddress;
+        }
+      } catch (error) {
+        // Fallback to using req.sessionID as identifier
+        userIdentifier = req.sessionID;
+      }
     }
     
-    console.log('[DEBUG] Usage count reset to 0');
-    res.json({ 
-      success: true, 
-      message: 'Usage count reset to 0',
-      usageCount: 0
+    // Delete all transcriptions for this user from the last day
+    await pool.query(
+      'DELETE FROM transcriptions WHERE user_identifier = $1 AND request_datetime > NOW() - INTERVAL \'1 day\'',
+      [userIdentifier]
+    );
+    
+    // Also reset the session count for good measure
+    req.session.usageCount = 0;
+    await new Promise((resolve) => {
+      req.session.save(err => {
+        if (err) {
+          console.error('[ERROR] Failed to save session after resetting usage count:', err);
+        }
+        resolve();
+      });
     });
-  });
+    
+    console.log(`[DEBUG] Usage count reset to 0 for user ${userIdentifier}`);
+    res.json({ success: true, message: 'Usage count reset to 0' });
+  } catch (error) {
+    console.error(`[ERROR] Failed to reset usage count: ${error.message}`);
+    res.status(500).json({ error: 'Failed to reset usage count' });
+  }
 });
 
 app.listen(port, () => {
