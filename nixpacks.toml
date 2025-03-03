@@ -1,9 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs", "npm"]
+aptPkgs = ["curl"]
 
 [phases.install]
 cmds = ["npm install --no-audit --no-fund"]
-dependsOn = ["setup"]
 
 [phases.build]
 cmds = ["npm run build || true"]
