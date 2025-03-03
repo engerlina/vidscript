@@ -574,3 +574,26 @@ svg.fill-current {
 .loading-overlay-content .loading {
   margin-bottom: 1rem;
 }
+
+/* Fix for Clerk modal appearing behind elements on mobile */
+/* Ensure Clerk modal appears above all other elements */
+.cl-component, 
+.cl-modal, 
+.cl-modal-backdrop, 
+.cl-card,
+.cl-internal-1fsg6zy {
+  z-index: 10000 !important; /* Higher than any other element */
+}
+
+.cl-modal-backdrop {
+  position: fixed !important;
+}
+
+/* Ensure Clerk's components are not blocked by any other elements */
+.cl-rootBox, 
+.cl-signIn, 
+.cl-signUp, 
+.cl-userProfile,
+.cl-userButton {
+  z-index: 10000 !important;
+}
