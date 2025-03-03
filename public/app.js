@@ -12,6 +12,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModalBtn = document.getElementById('close-modal-btn');
   const buttonText = document.getElementById('buttonText');
 
+  // Initial setup with a delay to ensure DOM is fully loaded
+  setTimeout(() => {
+    // Setup auth-related buttons first
+    setupAuthButtons();
+    
+    // Then apply visibility based on current state
+    applyResponsiveVisibility();
+    
+    // Setup Clerk listeners
+    if (window.Clerk) {
+      setupClerkListeners();
+    } else {
+      // If Clerk is not yet available, wait for it
+      document.addEventListener('clerk-ready', () => {
+        setupClerkListeners();
+      });
+    }
+  }, 300);
+
   // Store CSRF token
   let csrfToken = '';
 
@@ -209,12 +228,35 @@ document.addEventListener('DOMContentLoaded', () => {
         <button id="downloadCsvBtn" class="btn btn-outline btn-secondary">
           Download CSV
         </button>
+        <button id="summarizeBtn" class="btn btn-primary">
+          Summarize
+        </button>
+        <button id="repurposeBtn" class="btn btn-primary">
+          Repurpose
+        </button>
       </div>
-      <h2 class="text-xl font-bold mb-4 py-2 vertical-center">
+      <div id="aiOutput" class="my-8 w-full hidden">
+        <div class="bg-gray-100 p-4 rounded-lg w-full">
+          <div class="flex justify-between items-start mb-4">
+            <h3 id="aiOutputTitle" class="text-xl font-bold">AI Output</h3>
+            <button id="copyAiOutputBtn" class="btn btn-ghost btn-sm">
+              <svg id="copyIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <svg id="checkIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          </div>
+          <div id="aiOutputBadges" class="flex flex-wrap gap-2 mb-4"></div>
+          <div id="aiOutputContent" class="markdown-content w-full"></div>
+        </div>
+      </div>
+      <h2 class="text-xl font-bold mb-4 py-2 vertical-center w-full">
         Video Transcript
       </h2>
-      <div class="transcript-container">
-        <div id="transcription" class="mb-8 prose text-lg"></div>
+      <div class="transcript-container w-full">
+        <div id="transcription" class="mb-8 w-full text-lg"></div>
       </div>
     `;
     
@@ -224,6 +266,10 @@ document.addEventListener('DOMContentLoaded', () => {
     copyTranscriptionBtn = document.getElementById('copyTranscriptionBtn');
     downloadTxtBtn = document.getElementById('downloadTxtBtn');
     downloadCsvBtn = document.getElementById('downloadCsvBtn');
+    const summarizeBtn = document.getElementById('summarizeBtn');
+    const repurposeBtn = document.getElementById('repurposeBtn');
+    const aiOutput = document.getElementById('aiOutput');
+    const aiOutputContent = document.getElementById('aiOutputContent');
     
     // Add event listeners for the new buttons
     copyTranscriptionBtn.addEventListener('click', () => {
@@ -268,6 +314,17 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         alert('No transcript file available to download');
       }
+    });
+    
+    // Add event listeners for Summarize and Repurpose buttons
+    summarizeBtn?.addEventListener('click', () => {
+      const modal = document.getElementById('summarize-modal');
+      modal.checked = true;
+    });
+
+    repurposeBtn?.addEventListener('click', () => {
+      const modal = document.getElementById('repurpose-modal');
+      modal.checked = true;
     });
     
     // Show loading state
@@ -594,8 +651,8 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     
     // Check if Clerk is initialized
-    if (!isClerkInitialized()) {
-      alert('Authentication system is not ready. Please try again in a moment.');
+    if (!window.Clerk) {
+      alert('Authentication system is not ready. Please refresh the page and try again.');
       return;
     }
     
@@ -607,7 +664,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Open the sign-in modal
     try {
       window.Clerk.openSignIn({
-        fallbackRedirectUrl: window.location.href,
+        redirectUrl: window.location.href,
+        appearance: {
+          elements: {
+            rootBox: {
+              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
+              borderRadius: '8px'
+            }
+          }
+        }
       });
     } catch (error) {
       alert('There was an error opening the sign-in modal. Please try again.');
@@ -619,8 +684,8 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     
     // Check if Clerk is initialized
-    if (!isClerkInitialized()) {
-      alert('Authentication system is not ready. Please try again in a moment.');
+    if (!window.Clerk) {
+      alert('Authentication system is not ready. Please refresh the page and try again.');
       return;
     }
     
@@ -632,7 +697,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Open the sign-up modal
     try {
       window.Clerk.openSignUp({
-        fallbackRedirectUrl: window.location.href,
+        redirectUrl: window.location.href,
+        appearance: {
+          elements: {
+            rootBox: {
+              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
+              borderRadius: '8px'
+            }
+          }
+        }
       });
     } catch (error) {
       alert('There was an error opening the sign-up modal. Please try again.');
@@ -665,8 +738,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Function to set up the auth buttons
   function setupAuthButtons() {
-    // Initially disable the buttons
-    disableAuthButtons();
+    // First enable buttons if they were disabled
+    enableAuthButtons();
     
     // Buttons for larger screens
     const signInButton = document.getElementById('sign-in-button');
@@ -674,17 +747,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (signInButton) {
       // Remove any existing listeners to prevent duplicates
-      signInButton.replaceWith(signInButton.cloneNode(true));
-      const newSignInButton = document.getElementById('sign-in-button');
+      const newSignInButton = signInButton.cloneNode(true);
+      signInButton.parentNode.replaceChild(newSignInButton, signInButton);
       
+      // Add click handler to the new button
       newSignInButton.addEventListener('click', handleSignIn);
     }
     
     if (signUpButton) {
       // Remove any existing listeners to prevent duplicates
-      signUpButton.replaceWith(signUpButton.cloneNode(true));
-      const newSignUpButton = document.getElementById('sign-up-button');
+      const newSignUpButton = signUpButton.cloneNode(true);
+      signUpButton.parentNode.replaceChild(newSignUpButton, signUpButton);
       
+      // Add click handler to the new button
       newSignUpButton.addEventListener('click', handleSignUp);
     }
 
@@ -694,17 +769,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (dropdownSignInButton) {
       // Remove any existing listeners to prevent duplicates
-      dropdownSignInButton.replaceWith(dropdownSignInButton.cloneNode(true));
-      const newDropdownSignInButton = document.getElementById('dropdown-sign-in-button');
+      const newDropdownSignInButton = dropdownSignInButton.cloneNode(true);
+      dropdownSignInButton.parentNode.replaceChild(newDropdownSignInButton, dropdownSignInButton);
       
+      // Add click handler to the new button
       newDropdownSignInButton.addEventListener('click', handleSignIn);
     }
     
     if (dropdownSignUpButton) {
       // Remove any existing listeners to prevent duplicates
-      dropdownSignUpButton.replaceWith(dropdownSignUpButton.cloneNode(true));
-      const newDropdownSignUpButton = document.getElementById('dropdown-sign-up-button');
+      const newDropdownSignUpButton = dropdownSignUpButton.cloneNode(true);
+      dropdownSignUpButton.parentNode.replaceChild(newDropdownSignUpButton, dropdownSignUpButton);
       
+      // Add click handler to the new button
       newDropdownSignUpButton.addEventListener('click', handleSignUp);
     }
   }
@@ -758,37 +835,12 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Function to update UI based on user authentication state
   function updateUIForAuthState(user) {
-    const userButtons = document.getElementById('userButtons');
-    const userAvatar = document.getElementById('userAvatar');
-    const userAvatarDropdown = document.getElementById('userAvatarDropdown');
-    const userAvatarImg = document.getElementById('userAvatarImg');
-    const userAvatarImgSmall = document.getElementById('userAvatarImgSmall');
-    const hamburgerMenu = document.getElementById('hamburgerMenu');
-    
+    // Update avatar images if user is logged in
     if (user) {
-      // User is signed in
+      const userAvatarImg = document.getElementById('userAvatarImg');
+      const userAvatarImgSmall = document.getElementById('userAvatarImgSmall');
       
-      // Hide sign-in/sign-up buttons
-      if (userButtons) {
-        userButtons.style.display = 'none';
-      }
-      
-      // Show user avatar in navbar
-      if (userAvatar) {
-        userAvatar.style.display = 'block';
-      }
-      
-      // Show user avatar in mobile dropdown
-      if (userAvatarDropdown) {
-        userAvatarDropdown.style.display = 'block';
-      }
-      
-      // Hide hamburger menu on small screens when user is signed in
-      if (hamburgerMenu) {
-        hamburgerMenu.style.display = 'none';
-      }
-      
-      // Set user avatar image
+      // Set avatar images
       if (user.imageUrl) {
         if (userAvatarImg) userAvatarImg.src = user.imageUrl;
         if (userAvatarImgSmall) userAvatarImgSmall.src = user.imageUrl;
@@ -798,67 +850,173 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userAvatarImgSmall) userAvatarImgSmall.src = defaultImage;
       }
       
-      // Set up profile links
-      const profileLinks = document.querySelectorAll('#profile-link, #profile-link-small');
-      profileLinks.forEach(link => {
-        if (link) {
-          link.href = '/profile';
-        }
-      });
+      // Set up necessary buttons
+      setupSignOutButtons();
+      setupProfileButtons();
     } else {
-      // User is signed out
+      // User is logged out, set up auth buttons
+      setupAuthButtons();
+    }
+    
+    // Apply visibility changes to update the UI
+    applyResponsiveVisibility();
+  }
+  
+  // Function to apply responsive visibility based on screen size
+  function applyResponsiveVisibility() {
+    // Get viewport width once
+    const viewportWidth = window.innerWidth;
+    const isMobile = viewportWidth <= 640;
+    
+    // Get auth state
+    const isClerkAvailable = window.Clerk !== undefined;
+    const isUserLoggedIn = isClerkAvailable && window.Clerk.user;
+    
+    // Get all relevant elements
+    const mobileContainer = document.querySelector('.navbar-end.sm\\:hidden');
+    const desktopContainer = document.querySelector('.navbar-end.hidden.sm\\:flex');
+    const hamburgerMenu = document.getElementById('hamburgerMenu');
+    const userAvatarDropdown = document.getElementById('userAvatarDropdown');
+    const userButtons = document.getElementById('userButtons');
+    const userAvatar = document.getElementById('userAvatar');
+    
+    // REQUIREMENTS:
+    // 1. Small Screen (Mobile/Tablet)
+    //    - Logged Out: Show ONLY hamburger menu with Sign In/Sign Up dropdown
+    //    - Logged In: Show ONLY profile picture dropdown with Profile/Logout
+    // 2. Desktop (Larger Screens)
+    //    - Logged Out: Show ONLY Sign In and Sign Up buttons
+    //    - Logged In: Show ONLY profile picture dropdown with Profile/Logout
+    
+    // Reset all visibility first
+    if (mobileContainer) mobileContainer.style.display = 'none';
+    if (desktopContainer) desktopContainer.style.display = 'none';
+    if (hamburgerMenu) hamburgerMenu.style.display = 'none';
+    if (userAvatarDropdown) userAvatarDropdown.style.display = 'none';
+    if (userButtons) userButtons.style.display = 'none';
+    if (userAvatar) userAvatar.style.display = 'none';
+    
+    // MOBILE BEHAVIOR (width <= 640px)
+    if (isMobile) {
+      if (mobileContainer) mobileContainer.style.display = 'flex';
       
-      // Show sign-in/sign-up buttons
-      if (userButtons) {
-        userButtons.style.display = 'block';
+      if (isUserLoggedIn) {
+        // Logged In on Mobile: Show ONLY profile picture dropdown
+        if (userAvatarDropdown) userAvatarDropdown.style.display = 'block';
+      } else {
+        // Logged Out on Mobile: Show ONLY hamburger menu
+        if (hamburgerMenu) hamburgerMenu.style.display = 'block';
       }
+    } 
+    // DESKTOP BEHAVIOR (width > 640px)
+    else {
+      if (desktopContainer) desktopContainer.style.display = 'flex';
       
-      // Hide user avatar in navbar
-      if (userAvatar) {
-        userAvatar.style.display = 'none';
-      }
-      
-      // Hide user avatar in mobile dropdown
-      if (userAvatarDropdown) {
-        userAvatarDropdown.style.display = 'none';
-      }
-      
-      // Show hamburger menu on small screens when user is signed out
-      if (hamburgerMenu) {
-        hamburgerMenu.style.display = 'block';
+      if (isUserLoggedIn) {
+        // Logged In on Desktop: Show ONLY profile picture
+        if (userAvatar) userAvatar.style.display = 'block';
+      } else {
+        // Logged Out on Desktop: Show ONLY sign-in/sign-up buttons
+        if (userButtons) userButtons.style.display = 'flex';
       }
     }
   }
+  
+  // A more robust throttle function with debounce capability
+  function throttleAndDebounce(func, delay) {
+    let lastCall = 0;
+    let timeout = null;
+    
+    return function(...args) {
+      // Clear any existing timeout
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+      
+      // Set a timeout to ensure the function runs at least once after user stops resizing
+      timeout = setTimeout(() => {
+        func.apply(this, args);
+      }, delay);
+      
+      // Check if we should run the function now (throttle part)
+      const now = new Date().getTime();
+      if (now - lastCall >= delay) {
+        lastCall = now;
+        func.apply(this, args);
+      }
+    };
+  }
+
+  // Add resize event listener with improved timing control
+  window.addEventListener('resize', throttleAndDebounce(() => {
+    // Don't log every resize event to reduce console spam
+    applyResponsiveVisibility();
+  }, 250)); // Increased delay to reduce frequency
 
   function setupClerkListeners() {
     if (!window.Clerk) {
+      console.log("Clerk not available yet, cannot set up listeners");
       return;
     }
     
     try {
+      console.log("Setting up Clerk listeners");
+      
       // Set up sign-out buttons
       setupSignOutButtons();
       
+      // Set up auth buttons for both mobile and desktop
+      setupAuthButtons();
+      
+      // Set up profile buttons for profile navigation
+      setupProfileButtons();
+      
       // Listen for auth state changes
       window.Clerk.addListener(({ user }) => {
-        // Update UI based on auth state
-        updateUIForAuthState(user);
+        console.log("Auth state changed:", user ? "User logged in" : "User logged out");
         
-        // If user is signed in, ensure sign-out buttons are set up
         if (user) {
+          // User logged in, update avatar and setup related buttons
+          const userAvatarImg = document.getElementById('userAvatarImg');
+          const userAvatarImgSmall = document.getElementById('userAvatarImgSmall');
+          
+          if (user.imageUrl) {
+            if (userAvatarImg) userAvatarImg.src = user.imageUrl;
+            if (userAvatarImgSmall) userAvatarImgSmall.src = user.imageUrl;
+          } else {
+            const defaultImage = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+            if (userAvatarImg) userAvatarImg.src = defaultImage;
+            if (userAvatarImgSmall) userAvatarImgSmall.src = defaultImage;
+          }
+          
           setupSignOutButtons();
+          setupProfileButtons();
+        } else {
+          // User logged out, set up auth buttons
+          setupAuthButtons();
         }
+        
+        // Apply visibility changes with a small delay to ensure DOM is updated
+        setTimeout(() => {
+          applyResponsiveVisibility();
+        }, 10);
       });
       
-      // Check current user state
+      // Check current user state and initialize UI accordingly
       if (window.Clerk.user) {
+        console.log("User is already logged in on page load");
         updateUIForAuthState(window.Clerk.user);
-        setupSignOutButtons();
       } else {
+        console.log("No user logged in on page load");
         updateUIForAuthState(null);
       }
+      
+      // Ensure final UI state is consistent
+      setTimeout(() => {
+        applyResponsiveVisibility();
+      }, 50);
     } catch (error) {
-      // Silent error handling
+      console.error("Error setting up Clerk listeners:", error);
     }
   }
   
@@ -1017,4 +1175,516 @@ document.addEventListener('DOMContentLoaded', () => {
     // Make sure the results container is visible
     results.classList.remove('hidden');
   }
+
+  // Initialize modals
+  const summarizeModal = document.getElementById('summarize-modal');
+  const repurposeModal = document.getElementById('repurpose-modal');
+  const summarizeBtn = document.getElementById('summarizeBtn');
+  const repurposeBtn = document.getElementById('repurposeBtn');
+  const generateSummaryBtn = document.getElementById('generateSummaryBtn');
+  const generateRepurposeBtn = document.getElementById('generateRepurposeBtn');
+  const aiOutput = document.getElementById('aiOutput');
+  const aiOutputContent = document.getElementById('aiOutputContent');
+
+  // Add event listeners for modal close buttons
+  document.querySelectorAll('dialog .btn-circle').forEach(button => {
+    button.addEventListener('click', () => {
+      button.closest('dialog').close();
+    });
+  });
+
+  // Add click event listeners for modal backdrops
+  document.querySelectorAll('dialog').forEach(dialog => {
+    dialog.addEventListener('click', (e) => {
+      const rect = dialog.getBoundingClientRect();
+      const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+        rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+      if (!isInDialog) {
+        dialog.close();
+      }
+    });
+  });
+
+  // Function to get CSRF token
+  async function getCsrfToken() {
+    if (!csrfToken) {
+      try {
+        const response = await fetch('/csrf-token', {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        csrfToken = data.csrfToken;
+      } catch (error) {
+        console.error('Failed to fetch CSRF token:', error);
+      }
+    }
+    return csrfToken;
+  }
+
+  // Variable to store the interval ID for message rotation
+  let messageRotationInterval;
+
+  // Array of loading messages
+  const loadingMessages = [
+    "Brewing some content magic ✨... almost there!",
+    "Hold on! We're sprinkling the word wizardry 🧙‍♂️.",
+    "Rephrasing the awesomeness... stay tuned 👍.",
+    "Content remix in progress 🎧... just a moment!",
+    "Summoning the wordsmith bots 🤖... standby!",
+    "Loading your fresh-baked content cookies 🍪...",
+    "Spinning the content gears ⚙️ – nearly done!",
+    "Feeding ideas to the creative machine 🚀... hang tight!",
+    "Polishing the best bits ✨... your content's coming soon!",
+    "Turning content coal into content diamonds 💎... just a sec!"
+  ];
+
+  function showLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    const messageElement = document.getElementById('loadingMessage');
+    
+    if (overlay) {
+      overlay.classList.remove('hidden');
+      document.body.style.overflow = 'hidden'; // Prevent scrolling
+      
+      // Set initial message
+      if (messageElement) {
+        messageElement.textContent = loadingMessages[0];
+      }
+      
+      // Start rotating messages every 2 seconds
+      let currentIndex = 1; // Start with the second message on first rotation
+      
+      // Clear any existing interval
+      if (messageRotationInterval) {
+        clearInterval(messageRotationInterval);
+      }
+      
+      messageRotationInterval = setInterval(() => {
+        if (messageElement) {
+          // Add fade-out class
+          messageElement.classList.add('fade-out');
+          
+          // After a short delay, change the text and remove the fade-out class
+          setTimeout(() => {
+            messageElement.textContent = loadingMessages[currentIndex];
+            messageElement.classList.remove('fade-out');
+            
+            // Increment index and loop back to 0 if we reach the end
+            currentIndex = (currentIndex + 1) % loadingMessages.length;
+          }, 300);
+        }
+      }, 2000); // Rotate every 2 seconds
+    }
+  }
+  
+  // Function to hide the loading overlay
+  function hideLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.add('hidden');
+      document.body.style.overflow = ''; // Restore scrolling
+      
+      // Clear the message rotation interval
+      if (messageRotationInterval) {
+        clearInterval(messageRotationInterval);
+        messageRotationInterval = null;
+      }
+    }
+  }
+
+  document.getElementById('generateSummaryBtn')?.addEventListener('click', async () => {
+    const generateBtn = document.getElementById('generateSummaryBtn');
+    generateBtn.disabled = true;
+    generateBtn.classList.add('loading');
+    
+    // Show the loading overlay
+    showLoadingOverlay();
+
+    try {
+      const transcriptText = document.getElementById('transcription').textContent;
+      const length = document.getElementById('summaryLength').value;
+      const focus = document.getElementById('summaryFocus').value;
+
+      const response = await fetch('/generate-summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': await getCsrfToken()
+        },
+        body: JSON.stringify({
+          transcript: transcriptText,
+          length: length,
+          focus: focus
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate summary');
+      }
+
+      const data = await response.json();
+      
+      // Get the aiOutput element and make it visible
+      const aiOutput = document.getElementById('aiOutput');
+      if (aiOutput) {
+        aiOutput.classList.remove('hidden');
+      }
+      
+      // Set title to "AI Summary"
+      const aiOutputTitle = document.getElementById('aiOutputTitle');
+      if (aiOutputTitle) {
+        aiOutputTitle.textContent = 'AI Summary';
+      }
+      
+      // Create badges for summary options
+      const badges = document.createElement('div');
+      badges.className = 'flex flex-wrap gap-2 mb-2';
+      
+      // Add type badge
+      const typeBadge = document.createElement('div');
+      typeBadge.className = 'badge badge-primary';
+      typeBadge.textContent = 'Summary';
+      badges.appendChild(typeBadge);
+      
+      // Add length badge
+      const lengthSelect = document.getElementById('summaryLength');
+      if (lengthSelect) {
+        const lengthBadge = document.createElement('div');
+        lengthBadge.className = 'badge';
+        lengthBadge.textContent = `Length: ${lengthSelect.value}`;
+        badges.appendChild(lengthBadge);
+      }
+      
+      // Add focus badge
+      const focusSelect = document.getElementById('summaryFocus');
+      if (focusSelect) {
+        const focusBadge = document.createElement('div');
+        focusBadge.className = 'badge';
+        focusBadge.textContent = `Focus: ${focusSelect.value}`;
+        badges.appendChild(focusBadge);
+      }
+      
+      // Get the aiOutputContent element
+      const aiOutputContent = document.getElementById('aiOutputContent');
+      
+      // Clear any existing badges
+      const existingBadges = document.querySelector('#aiOutput .flex.flex-wrap.gap-2');
+      if (existingBadges) {
+        existingBadges.remove();
+      }
+      
+      // Add badges before content - make sure we're inserting in the right place
+      if (aiOutputContent && aiOutputContent.parentNode) {
+        aiOutputContent.parentNode.insertBefore(badges, aiOutputContent);
+      }
+      
+      // Set the content with markdown preserved for copying
+      if (aiOutputContent) {
+        // Store the original markdown for copying
+        aiOutputContent.setAttribute('data-markdown', data.output);
+        // Render the markdown as HTML
+        aiOutputContent.innerHTML = marked.parse(data.output);
+      }
+      
+      // Reinitialize the copy button after content is set
+      const copyAiOutputBtn = document.getElementById('copyAiOutputBtn');
+      if (copyAiOutputBtn) {
+        // Remove any existing event listeners by cloning and replacing
+        const newCopyBtn = copyAiOutputBtn.cloneNode(true);
+        copyAiOutputBtn.parentNode.replaceChild(newCopyBtn, copyAiOutputBtn);
+        
+        // Add the click event listener to the new button
+        newCopyBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          console.log('Copy AI Output button clicked');
+          
+          const aiOutputContent = document.getElementById('aiOutputContent');
+          const copyIcon = document.getElementById('copyIcon');
+          const checkIcon = document.getElementById('checkIcon');
+          
+          if (aiOutputContent) {
+            try {
+              const dataMarkdown = aiOutputContent.getAttribute('data-markdown');
+              const contentToCopy = dataMarkdown || aiOutputContent.textContent;
+              
+              console.log('Content to copy (first 50 chars):', contentToCopy.substring(0, 50));
+              
+              await navigator.clipboard.writeText(contentToCopy);
+              
+              console.log('Content copied to clipboard successfully');
+              
+              if (copyIcon && checkIcon) {
+                copyIcon.classList.add('hidden');
+                checkIcon.classList.remove('hidden');
+                
+                setTimeout(() => {
+                  copyIcon.classList.remove('hidden');
+                  checkIcon.classList.add('hidden');
+                }, 2000);
+              }
+            } catch (err) {
+              console.error('Failed to copy text:', err);
+              alert('Failed to copy content to clipboard');
+            }
+          } else {
+            console.warn('AI output content element not found');
+          }
+        });
+        
+        console.log('Copy AI Output button event listener attached after summary generation');
+      }
+      
+      // Close the modal
+      const modal = document.getElementById('summarize-modal');
+      if (modal) {
+        modal.checked = false;
+      }
+      
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      alert('Failed to generate summary. Please try again.');
+    } finally {
+      // Re-enable the button and remove loading state
+      generateBtn.disabled = false;
+      generateBtn.classList.remove('loading');
+      
+      // Hide the loading overlay
+      hideLoadingOverlay();
+    }
+  });
+
+  document.getElementById('generateRepurposeBtn')?.addEventListener('click', async () => {
+    const generateBtn = document.getElementById('generateRepurposeBtn');
+    generateBtn.disabled = true;
+    generateBtn.classList.add('loading');
+    
+    // Show the loading overlay
+    showLoadingOverlay();
+
+    try {
+      const transcriptText = document.getElementById('transcription').textContent;
+      const purpose = document.getElementById('repurposePurpose').value;
+      const tone = document.getElementById('repurposeTone').value;
+
+      const response = await fetch('/generate-repurpose', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': await getCsrfToken()
+        },
+        body: JSON.stringify({
+          transcript: transcriptText,
+          purpose: purpose,
+          tone: tone
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to repurpose content');
+      }
+
+      const data = await response.json();
+      
+      // Get the aiOutput element and make it visible
+      const aiOutput = document.getElementById('aiOutput');
+      if (aiOutput) {
+        aiOutput.classList.remove('hidden');
+      }
+      
+      // Set title to "AI Repurpose"
+      const aiOutputTitle = document.getElementById('aiOutputTitle');
+      if (aiOutputTitle) {
+        aiOutputTitle.textContent = 'AI Repurpose';
+      }
+      
+      // Create badges for repurpose options
+      const badges = document.createElement('div');
+      badges.className = 'flex flex-wrap gap-2 mb-2';
+      
+      // Add type badge
+      const typeBadge = document.createElement('div');
+      typeBadge.className = 'badge badge-primary';
+      typeBadge.textContent = 'Repurpose';
+      badges.appendChild(typeBadge);
+      
+      // Add purpose badge
+      const purposeSelect = document.getElementById('repurposePurpose');
+      if (purposeSelect) {
+        const purposeBadge = document.createElement('div');
+        purposeBadge.className = 'badge';
+        purposeBadge.textContent = `Purpose: ${purposeSelect.value}`;
+        badges.appendChild(purposeBadge);
+      }
+      
+      // Add tone badge
+      const toneSelect = document.getElementById('repurposeTone');
+      if (toneSelect) {
+        const toneBadge = document.createElement('div');
+        toneBadge.className = 'badge';
+        toneBadge.textContent = `Tone: ${toneSelect.value}`;
+        badges.appendChild(toneBadge);
+      }
+      
+      // Get the aiOutputContent element
+      const aiOutputContent = document.getElementById('aiOutputContent');
+      
+      // Clear any existing badges
+      const existingBadges = document.querySelector('#aiOutput .flex.flex-wrap.gap-2');
+      if (existingBadges) {
+        existingBadges.remove();
+      }
+      
+      // Add badges before content - make sure we're inserting in the right place
+      if (aiOutputContent && aiOutputContent.parentNode) {
+        aiOutputContent.parentNode.insertBefore(badges, aiOutputContent);
+      }
+      
+      // Set the content with markdown preserved for copying
+      if (aiOutputContent) {
+        // Store the original markdown for copying
+        aiOutputContent.setAttribute('data-markdown', data.output);
+        // Render the markdown as HTML
+        aiOutputContent.innerHTML = marked.parse(data.output);
+      }
+      
+      // Reinitialize the copy button after content is set
+      const copyAiOutputBtn = document.getElementById('copyAiOutputBtn');
+      if (copyAiOutputBtn) {
+        // Remove any existing event listeners by cloning and replacing
+        const newCopyBtn = copyAiOutputBtn.cloneNode(true);
+        copyAiOutputBtn.parentNode.replaceChild(newCopyBtn, copyAiOutputBtn);
+        
+        // Add the click event listener to the new button
+        newCopyBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          console.log('Copy AI Output button clicked');
+          
+          const aiOutputContent = document.getElementById('aiOutputContent');
+          const copyIcon = document.getElementById('copyIcon');
+          const checkIcon = document.getElementById('checkIcon');
+          
+          if (aiOutputContent) {
+            try {
+              const dataMarkdown = aiOutputContent.getAttribute('data-markdown');
+              const contentToCopy = dataMarkdown || aiOutputContent.textContent;
+              
+              console.log('Content to copy (first 50 chars):', contentToCopy.substring(0, 50));
+              
+              await navigator.clipboard.writeText(contentToCopy);
+              
+              console.log('Content copied to clipboard successfully');
+              
+              if (copyIcon && checkIcon) {
+                copyIcon.classList.add('hidden');
+                checkIcon.classList.remove('hidden');
+                
+                setTimeout(() => {
+                  copyIcon.classList.remove('hidden');
+                  checkIcon.classList.add('hidden');
+                }, 2000);
+              }
+            } catch (err) {
+              console.error('Failed to copy text:', err);
+              alert('Failed to copy content to clipboard');
+            }
+          } else {
+            console.warn('AI output content element not found');
+          }
+        });
+        
+        console.log('Copy AI Output button event listener attached after repurpose generation');
+      }
+      
+      // Close the modal
+      const modal = document.getElementById('repurpose-modal');
+      if (modal) {
+        modal.checked = false;
+      }
+      
+    } catch (error) {
+      console.error('Error repurposing content:', error);
+      alert('Failed to repurpose content. Please try again.');
+    } finally {
+      // Re-enable the button and remove loading state
+      generateBtn.disabled = false;
+      generateBtn.classList.remove('loading');
+      
+      // Hide the loading overlay
+      hideLoadingOverlay();
+    }
+  });
+
+  // Add copy button functionality - moving earlier in initialization
+  function setupCopyAiOutputButton() {
+    const copyButton = document.getElementById('copyAiOutputBtn');
+    if (copyButton) {
+      // First, remove all existing event listeners
+      const newCopyBtn = copyButton.cloneNode(true);
+      copyButton.parentNode.replaceChild(newCopyBtn, copyButton);
+      
+      // Add a direct click handler
+      document.getElementById('copyAiOutputBtn').addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('Copy button clicked directly');
+        
+        // Get the elements
+        const aiOutputContent = document.getElementById('aiOutputContent');
+        const copyIcon = document.getElementById('copyIcon');
+        const checkIcon = document.getElementById('checkIcon');
+        
+        if (!aiOutputContent) {
+          console.error('AI output content not found');
+          return;
+        }
+        
+        try {
+          // Get the markdown content from the data attribute if available
+          const markdownContent = aiOutputContent.getAttribute('data-markdown');
+          let contentToCopy;
+          
+          if (markdownContent) {
+            contentToCopy = markdownContent;
+            console.log('Using markdown content from data attribute');
+          } else {
+            contentToCopy = aiOutputContent.textContent;
+            console.log('Using text content as fallback');
+          }
+          
+          console.log('Content to copy (first 50 chars):', contentToCopy.substring(0, 50));
+          
+          // Copy to clipboard
+          await navigator.clipboard.writeText(contentToCopy);
+          console.log('Content copied successfully');
+          
+          // Show success indicator
+          if (copyIcon && checkIcon) {
+            copyIcon.classList.add('hidden');
+            checkIcon.classList.remove('hidden');
+            
+            // Reset after 2 seconds
+            setTimeout(() => {
+              copyIcon.classList.remove('hidden');
+              checkIcon.classList.add('hidden');
+            }, 2000);
+          }
+        } catch (err) {
+          console.error('Failed to copy content:', err);
+          alert('Failed to copy content: ' + err.message);
+        }
+      });
+      
+      console.log('Direct copy button event listener attached');
+    } else {
+      console.warn('Copy AI Output button not found in the DOM');
+    }
+  }
+
+  // Set up copy button initially
+  setupCopyAiOutputButton();
 });

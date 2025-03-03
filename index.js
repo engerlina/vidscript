@@ -17,6 +17,7 @@ const { exec } = require('child_process');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
+const OpenAI = require('openai');
 
 // Check if required environment variables are available
 console.log(`[STARTUP] Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -992,6 +993,85 @@ app.post('/reset-usage', validateRequest, async (req, res) => {
   } catch (error) {
     console.error(`[ERROR] Failed to reset usage count: ${error.message}`);
     res.status(500).json({ error: 'Failed to reset usage count' });
+  }
+});
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// Add route for generating summary
+app.post('/generate-summary', validateRequest, async (req, res) => {
+  try {
+    const { transcript, length, focus } = req.body;
+    
+    const prompt = `Output should be in Markdown format. Summarise this transcript into [${length} words] with a focus on ${focus || 'the main points'}\n\n${transcript}`;
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          "role": "user",
+          "content": prompt
+        }
+      ],
+      response_format: { type: "text" },
+      temperature: 1,
+      max_tokens: 2048,
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0
+    });
+
+    res.json({ output: response.choices[0].message.content });
+  } catch (error) {
+    console.error('Error generating summary:', error);
+    res.status(500).json({ error: 'Failed to generate summary' });
+  }
+});
+
+// Add route for repurposing content
+app.post('/generate-repurpose', validateRequest, async (req, res) => {
+  try {
+    const { transcript, purpose, tone } = req.body;
+    
+    let maxLength;
+    switch (purpose) {
+      case 'tweet':
+        maxLength = '180 characters';
+        break;
+      case 'linkedin':
+        maxLength = '2000 characters';
+        break;
+      case 'blog':
+        maxLength = '500 words';
+        break;
+      default:
+        maxLength = '4000 characters';
+    }
+    
+    const prompt = `Output should be in Markdown format. Repurpose this transcript into a ${purpose} (maximum ${maxLength}) using a ${tone} tone of voice:\n\n${transcript}`;
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          "role": "user",
+          "content": prompt
+        }
+      ],
+      response_format: { type: "text" },
+      temperature: 1,
+      max_tokens: 2048,
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0
+    });
+
+    res.json({ output: response.choices[0].message.content });
+  } catch (error) {
+    console.error('Error repurposing content:', error);
+    res.status(500).json({ error: 'Failed to repurpose content' });
   }
 });
 

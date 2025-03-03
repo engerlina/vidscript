@@ -33,13 +33,14 @@
         
                    
         </div>
-        <div id="results" class="hidden">
-          <img
-            id="thumbnail"
-            src=""
-            alt="YouTube Video Thumbnail"
-            class="mb-8 mx-auto"
-          />
+        <div id="results" class="hidden w-full">
+          <div id="thumbnail" class="w-full">
+            <img
+              src=""
+              alt="YouTube Video Thumbnail"
+              class="w-full"
+            />
+          </div>
           <div class="text-center button-container">
             <button id="copyTranscriptionBtn" class="btn btn-secondary">
               Copy Transcript
@@ -50,12 +51,35 @@
             <button id="downloadCsvBtn" class="btn btn-outline btn-secondary">
               Download CSV
             </button>
+            <label for="summarize-modal" class="btn btn-primary">
+              Summarize
+            </label>
+            <label for="repurpose-modal" class="btn btn-primary">
+              Repurpose
+            </label>
           </div>
-          <h2 class="text-xl font-bold mb-4 py-2 vertical-center">
+          <div id="aiOutput" class="my-8 w-full hidden">
+            <div class="bg-gray-100 p-4 rounded-lg w-full">
+              <div class="flex justify-between items-start mb-4">
+                <h3 id="aiOutputTitle" class="text-xl font-bold">AI Output</h3>
+                <button id="copyAiOutputBtn" class="btn btn-ghost btn-sm">
+                  <svg id="copyIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <svg id="checkIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              </div>
+              <div id="aiOutputBadges" class="flex flex-wrap gap-2 mb-4"></div>
+              <div id="aiOutputContent" class="markdown-content w-full"></div>
+            </div>
+          </div>
+          <h2 class="text-xl font-bold mb-4 py-2 vertical-center w-full">
             Video Transcript
           </h2>
-          <div class="transcript-container">
-            <div id="transcription" class="mb-8 prose text-lg"></div>
+          <div class="transcript-container w-full">
+            <div id="transcription" class="w-full text-lg"></div>
           </div>
         </div>
       </div>
@@ -76,6 +100,66 @@
           ></div>
         </div>
       </dialog>
+      
+      <!-- Summarize Modal -->
+      <input type="checkbox" id="summarize-modal" class="modal-toggle" />
+      <div class="modal">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg mb-4">Summarize Transcript</h3>
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text">Length</span>
+            </label>
+            <select id="summaryLength" class="select select-bordered w-full">
+              <option value="100">100 words</option>
+              <option value="250">250 words</option>
+              <option value="500">500 words</option>
+            </select>
+            
+            <label class="label mt-4">
+              <span class="label-text">Focus</span>
+            </label>
+            <input type="text" id="summaryFocus" placeholder="Enter focus area" class="input input-bordered w-full" />
+            
+            <button id="generateSummaryBtn" class="btn btn-primary mt-6">Generate Summary</button>
+          </div>
+          <div class="modal-action">
+            <label for="summarize-modal" class="btn">Close</label>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Repurpose Modal -->
+      <input type="checkbox" id="repurpose-modal" class="modal-toggle" />
+      <div class="modal">
+        <div class="modal-box">
+          <h3 class="font-bold text-lg mb-4">Repurpose Transcript</h3>
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text">Purpose</span>
+            </label>
+            <select id="repurposePurpose" class="select select-bordered w-full">
+              <option value="tweet">Tweet/X Post (180 characters)</option>
+              <option value="linkedin">LinkedIn Post (1000 characters)</option>
+              <option value="blog">Blog Post (1000 words)</option>
+            </select>
+            
+            <label class="label mt-4">
+              <span class="label-text">Tone of Voice</span>
+            </label>
+            <select id="repurposeTone" class="select select-bordered w-full">
+              <option value="professional">Professional</option>
+              <option value="casual">Casual</option>
+              <option value="humorous">Humorous</option>
+            </select>
+            
+            <button id="generateRepurposeBtn" class="btn btn-primary mt-6">Generate Content</button>
+          </div>
+          <div class="modal-action">
+            <label for="repurpose-modal" class="btn">Close</label>
+          </div>
+        </div>
+      </div>
       <%- include('footer') %>
     </div>
     
@@ -176,6 +260,17 @@
       }
     </script>
     
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/app.js"></script>
+    
+    <!-- Loading overlay for AI generation -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+      <div class="loading-overlay-content">
+        <span class="loading loading-spinner loading-lg"></span>
+        <progress class="progress w-56 my-4" value="100" max="100"></progress>
+        <p id="loadingMessage" class="text-lg font-medium">Generating AI content...</p>
+        <p class="text-sm text-gray-500">Please wait, this may take a few moments</p>
+      </div>
+    </div>
   </body>
 </html>

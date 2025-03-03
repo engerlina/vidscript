@@ -10,28 +10,40 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
+  width: 100%;
+}
+
+#urlInput {
+  flex: 1;
+  min-width: 200px;
+  height: 3rem;
+  padding: 0.75rem 1rem;
+  line-height: 1.5;
 }
 
 .page-container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 40px 0;
+  padding: 40px 20px;
   flex: 1;
   z-index: 100;
+  width: 100%;
 }
 
 #thumbnail {
   width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  max-width: 800px;
+  margin-bottom: 2rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 #thumbnail img {
   width: 100%;
   max-width: 100%;
-  border-radius: 16px;
+  border-radius: 8px;
   object-fit: cover;
+  display: block;
 }
 
 .thumbnail-img {
@@ -56,28 +68,67 @@ body {
 }
 
 .vertical-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  display: block;
 }
 
+/* ===== NAVBAR STYLING RESET ===== */
+/* Base navbar styles */
 .navbar {
   background-color: #adadad;
   color: #fff;
   border-radius: 8px;
   z-index: 500;
+  margin: 10px;
+  padding: 10px;
+  width: calc(100% - 20px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
+/* Reset any flex properties on children */
+.navbar > div {
+  width: auto;
+}
+
+/* Logo side */
+.navbar .navbar-start {
+  display: flex;
+  align-items: center;
+}
+
+/* Button side - both mobile and desktop */
+.navbar .navbar-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+/* Common button styles */
+.navbar #sign-in-button,
+.navbar #sign-up-button {
+  margin: 0 0.25rem;
+}
+
+/* Sign in button styles */
 .navbar #sign-in-button {
   color: white;
   background-color: #adadad;
   border: none;
+  display: inline-block;
 }
 
+/* Sign up button styles */
 .navbar #sign-up-button {
   color: white;
   background-color: gray;
   border: 1px solid gray;
+  display: inline-block;
 }
 
 .navbar .menu-horizontal a {
@@ -88,60 +139,159 @@ body {
   background-color: #adadad;
   color: #fff;
   border-radius: 8px;
-  margin-top: auto;
+  margin: 10px;
+  padding: 10px;
+  width: calc(100% - 20px);
 }
 
 .container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 10px 20px;
-  min-height: 100vh;
   display: flex;
+  min-height: 100vh;
   flex-direction: column;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 .transcript-container {
   max-height: 500px;
   overflow-y: auto;
-  border: 1px solid #ccc;
-  padding: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 1rem;
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 2rem;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 0.5rem;
+}
+
+/* AI Output styling */
+#aiOutput {
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 2rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#aiOutput .bg-gray-100 {
+  border: 1px solid #e5e7eb;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  width: 100%;
+}
+
+#transcription {
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  width: 100%;
+}
+
+.markdown-content {
+  font-size: 1rem;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  width: 100%;
+}
+
+/* Ensure any markdown content rendering matches the transcript styling */
+.markdown-content p,
+.markdown-content ul,
+.markdown-content ol,
+.markdown-content blockquote {
+  margin-bottom: 1rem;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-weight: bold;
+}
+
+.markdown-content h1 {
+  font-size: 1.5rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.3rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.1rem;
+}
+
+/* Copy button hover effect */
+#copyAiOutputBtn:hover {
+  background-color: #e5e7eb;
+}
+
+/* Badge styling */
+.badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+.badge-primary {
+  background-color: #6366f1;
+  color: white;
 }
 
 .modal {
+  pointer-events: none;
   position: fixed;
-  z-index: 1000;
-  left: 0;
   top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  background-color: rgba(0, 0, 0, 0.5);
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   justify-content: center;
   align-items: center;
+  background-color: rgba(0, 0, 0, 0.5);
   opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.3s, visibility 0.3s;
+  transition: opacity 0.2s;
+  z-index: 999;
 }
 
-.modal.show {
-  opacity: 1;
-  visibility: visible;
+.modal-toggle {
+  display: none;
+}
+
+.modal-toggle:checked + .modal {
   pointer-events: auto;
+  opacity: 1;
 }
 
 .modal-box {
-  background-color: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  max-width: 90%;
-  width: 400px;
-  text-align: center;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 91.666667%;
+  max-width: 32rem;
+  transition: transform 0.2s;
+  transform: scale(0.9);
 }
 
-.modal-box .btn {
-  margin-top: 10px;
+.modal-toggle:checked + .modal .modal-box {
+  transform: scale(1);
+}
+
+.button-container {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.button-container button {
+  margin: 0.25rem;
 }
 
 svg.fill-current {
@@ -176,38 +326,41 @@ svg.fill-current {
   margin-right: 5px;
 }
 
+/* ===== MOBILE SPECIFIC STYLES ===== */
 @media (max-width: 640px) {
+  /* Page container mobile styles */
   .page-container {
-    margin: 0 20px;
+    padding: 20px 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
-
+  
+  /* Input container mobile styles */
   .input-container {
     flex-direction: column;
     gap: 10px;
-  }
-
-  .button-container {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .button-container button {
     width: 100%;
   }
-
-  .footer-content {
-    flex-direction: column;
+  
+  #urlInput {
+    width: 100%;
+    min-width: 0;
+    height: 3rem;
   }
-
-  .email {
-    margin-left: 0;
-    margin-top: 5px;
+  
+  /* Dropdown mobile styles - force everything to right */
+  .navbar-end.sm\:hidden {
+    padding-right: 0;  /* No right padding */
   }
-
+  
+  /* Mobile dropdown menu styling */
   .navbar-end .dropdown {
     display: block;
   }
 
+  /* Mobile dropdown button styling */
   .navbar #dropdown-sign-in-button {
     color: #1f2937;
     background-color: white;
@@ -219,16 +372,91 @@ svg.fill-current {
     background-color: gray;
     border: 1px solid gray;
   }
+}
 
-  .navbar-end .hidden {
+/* ===== DESKTOP SPECIFIC STYLES ===== */
+@media (min-width: 641px) {
+  /* Desktop navbar spacing - maintain consistent padding with mobile */
+  .navbar {
+    padding: 10px;
+  }
+  
+  /* Hide mobile dropdown on desktop */
+  .navbar-end .dropdown {
     display: none;
   }
 }
 
-@media (min-width: 641px) {
-  .navbar-end .dropdown {
-    display: none;
+/* Simple hidden class without !important */
+.hidden {
+  display: none;
+}
+
+/* Show avatar display */
+.show-avatar {
+  display: block;
+}
+
+/* User avatar styling */
+.navbar-end #userAvatar {
+  margin-left: 10px;
+}
+
+.navbar-end #userAvatar .avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navbar-end #userAvatar .avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Progress bar styling */
+.loading-overlay-content .progress {
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.loading-overlay-content .progress::-webkit-progress-bar {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 0.25rem;
+}
+
+.loading-overlay-content .progress::-webkit-progress-value {
+  background-color: #6366f1;
+  border-radius: 0.25rem;
+  animation: progress-animation 2s infinite linear;
+  background-size: 30px 30px;
+  background-image: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.15) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.15) 75%,
+    transparent 75%,
+    transparent
+  );
+}
+
+@keyframes progress-animation {
+  0% {
+    background-position: 0 0;
   }
+  100% {
+    background-position: 60px 0;
+  }
+}
+
+/* User buttons styling */
+#userButtons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 /* Usage counter styling */
@@ -307,5 +535,42 @@ svg.fill-current {
 /* Animation for fading out error messages */
 .fade-out {
   opacity: 0;
-  transition: opacity 0.5s ease-out;
+  transition: opacity 0.3s ease-out;
+}
+
+/* Loading message styling */
+#loadingMessage {
+  min-height: 3em; /* Ensure consistent height during transitions */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease-in;
+  opacity: 1;
+  text-align: center;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  cursor: wait;
+}
+
+.loading-overlay-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.loading-overlay-content .loading {
+  margin-bottom: 1rem;
 }
