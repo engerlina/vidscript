@@ -88,7 +88,7 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production', // use secure cookies in production
     maxAge: 1000 * 60 * 60 * 24, // 1 day
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Allow cross-site cookies in production
-    domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN || '.vidscript.co' : undefined, // Set domain in production
+    domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN || 'vidscript.co' : undefined, // Set domain in production without dot prefix
     httpOnly: true // Prevent client-side JS from reading the cookie
   }
 }));
@@ -98,7 +98,7 @@ console.log(`[STARTUP] Session configuration: ${JSON.stringify({
   secure: process.env.NODE_ENV === 'production',
   maxAge: 1000 * 60 * 60 * 24,
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN || '.vidscript.co' : undefined,
+  domain: process.env.NODE_ENV === 'production' ? process.env.COOKIE_DOMAIN || 'vidscript.co' : undefined,
   httpOnly: true
 })}`);
 
@@ -547,6 +547,7 @@ app.post('/transcribe', validateRequest, async (req, res) => {
                 reject(err);
               } else {
                 console.log(`[INFO] Session saved with updated usage count: ${req.session.usageCount}`);
+                console.log(`[DEBUG] Session cookie after save:`, req.session.cookie);
                 resolve();
               }
             });
@@ -654,6 +655,7 @@ app.get('/transcribe/:videoId/:lang', validateRequest, async (req, res) => {
             reject(err);
           } else {
             console.log(`[INFO] Session saved with updated usage count: ${req.session.usageCount}`);
+            console.log(`[DEBUG] Session cookie after save:`, req.session.cookie);
             resolve();
           }
         });
@@ -755,6 +757,12 @@ app.get('/modal', (req, res) => {
 // Add a new endpoint to get the current usage count
 app.get('/usage-count', async (req, res) => {
   try {
+    console.log(`[DEBUG] Session ID in usage-count: ${req.sessionID}`);
+    console.log(`[DEBUG] Session object in usage-count:`, {
+      usageCount: req.session.usageCount,
+      cookie: req.session.cookie
+    });
+    
     const auth = getAuth(req);
     const isLoggedIn = !!auth?.userId;
     let userIdentifier = req.sessionID;
@@ -798,6 +806,16 @@ app.get('/usage-count', async (req, res) => {
       const usageCount = req.session.usageCount || 0;
       
       console.log(`[INFO] Free user has used ${usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today`);
+      
+      // Force session save to ensure we're returning the most up-to-date count
+      await new Promise((resolve) => {
+        req.session.save(err => {
+          if (err) {
+            console.error('[ERROR] Failed to save session in usage-count endpoint:', err);
+          }
+          resolve();
+        });
+      });
       
       res.json({
         isLoggedIn: false,
@@ -857,6 +875,29 @@ app.get('/debug-session', (req, res) => {
   
   console.log('[DEBUG] Session info:', sessionInfo);
   res.json(sessionInfo);
+});
+
+// Add a detailed session debug endpoint
+app.get('/debug-session-detailed', (req, res) => {
+  console.log('[DEBUG] Detailed session debug endpoint called');
+  console.log(`[DEBUG] Session ID: ${req.sessionID}`);
+  console.log('[DEBUG] Session data:', {
+    usageCount: req.session.usageCount,
+    cookie: req.session.cookie
+  });
+  
+  res.json({
+    sessionID: req.sessionID,
+    usageCount: req.session.usageCount || 0,
+    cookie: {
+      maxAge: req.session.cookie.maxAge,
+      expires: req.session.cookie.expires,
+      secure: req.session.cookie.secure,
+      httpOnly: req.session.cookie.httpOnly,
+      domain: req.session.cookie.domain,
+      sameSite: req.session.cookie.sameSite
+    }
+  });
 });
 
 // Add an endpoint to get the usage limits

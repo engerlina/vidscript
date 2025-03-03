@@ -124,6 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
           // Still update the UI with the fallback data provided
         }
         
+        console.log('[DEBUG] Usage count response:', data);
+        
         const usageCounter = document.getElementById('usage-counter');
         if (usageCounter) {
           const userType = data.isLoggedIn ? 'Logged-in user' : 'Free user';
