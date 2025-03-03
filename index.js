@@ -460,6 +460,29 @@ app.get('/user-details', requireAuth(), async (req, res) => {
   }
 });
 
+// Helper function to get a persistent identifier for the user
+const getPersistentIdentifier = (req) => {
+  const auth = getAuth(req);
+  const isLoggedIn = !!auth?.userId;
+  
+  if (isLoggedIn) {
+    try {
+      return `user_${auth.userId}`;
+    } catch (error) {
+      // Fall back to IP + user agent if we can't get the user ID
+    }
+  }
+  
+  // For non-logged in users or if getting user ID fails, use IP + user agent hash
+  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  
+  // Create a simple hash of the IP and user agent
+  const hash = crypto.createHash('md5').update(`${ip}_${userAgent}`).digest('hex');
+  
+  return `anon_${hash}`;
+};
+
 // Transcribe route
 app.post('/transcribe', validateRequest, async (req, res) => {
   const youtubeUrl = req.body.url;
@@ -471,8 +494,11 @@ app.post('/transcribe', validateRequest, async (req, res) => {
 
   const auth = getAuth(req);
   const isLoggedIn = !!auth?.userId;
-  let identifier = req.sessionID;
-  let userIdentifier = req.sessionID;
+  const persistentId = getPersistentIdentifier(req);
+  let identifier = persistentId;
+  let userIdentifier = persistentId;
+
+  console.log(`[DEBUG] Using persistent identifier: ${persistentId}`);
 
   if (isLoggedIn) {
     try {
@@ -484,9 +510,10 @@ app.post('/transcribe', validateRequest, async (req, res) => {
         identifier = userIdentifier;
       }
     } catch (error) {
-      // Fallback to using req.sessionID as identifier
-      identifier = req.sessionID;
-      userIdentifier = req.sessionID;
+      // Fallback to using persistent ID as identifier
+      console.error(`[ERROR] Failed to get user email: ${error.message}`);
+      identifier = persistentId;
+      userIdentifier = persistentId;
     }
   }
 
@@ -749,7 +776,10 @@ app.get('/usage-count', async (req, res) => {
     
     const auth = getAuth(req);
     const isLoggedIn = !!auth?.userId;
-    let userIdentifier = req.sessionID;
+    const persistentId = getPersistentIdentifier(req);
+    let userIdentifier = persistentId;
+
+    console.log(`[DEBUG] Using persistent identifier for usage count: ${persistentId}`);
 
     if (isLoggedIn) {
       try {
@@ -797,7 +827,7 @@ app.get('/usage-count', async (req, res) => {
         // Update the session with the correct count from the database
         req.session.usageCount = usageCount;
         
-        console.log(`[INFO] Free user has used ${usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today (from database)`);
+        console.log(`[INFO] Free user ${userIdentifier} has used ${usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today (from database)`);
         
         // Force session save to ensure we're returning the most up-to-date count
         await new Promise((resolve) => {
@@ -920,7 +950,10 @@ app.post('/reset-usage', validateRequest, async (req, res) => {
   try {
     const auth = getAuth(req);
     const isLoggedIn = !!auth?.userId;
-    let userIdentifier = req.sessionID;
+    const persistentId = getPersistentIdentifier(req);
+    let userIdentifier = persistentId;
+
+    console.log(`[DEBUG] Using persistent identifier for reset usage: ${persistentId}`);
 
     if (isLoggedIn) {
       try {
@@ -931,8 +964,9 @@ app.post('/reset-usage', validateRequest, async (req, res) => {
           userIdentifier = primaryEmail.emailAddress;
         }
       } catch (error) {
-        // Fallback to using req.sessionID as identifier
-        userIdentifier = req.sessionID;
+        // Fallback to using persistent ID as identifier
+        console.error(`[ERROR] Failed to get user email: ${error.message}`);
+        userIdentifier = persistentId;
       }
     }
     
