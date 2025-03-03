@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Fetch usage limits on page load
   fetchUsageLimits();
 
+  // Fetch usage count on page load
+  updateUsageCount();
+
   // Function to fetch CSRF token
   function fetchCsrfToken() {
     // First check session status
@@ -133,6 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
             usageText += ' (0 remaining)';
           }
           
+          console.log('[INFO] Updating usage counter:', data);
+          
           // Set appropriate styling based on remaining uses
           if (data.remainingUses <= 0) {
             usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4 text-danger';
@@ -144,27 +149,20 @@ document.addEventListener('DOMContentLoaded', () => {
           
           // Set the counter text
           usageCounter.textContent = usageText;
+          
+          // Force a redraw of the element
+          usageCounter.style.display = 'none';
+          setTimeout(() => {
+            usageCounter.style.display = 'block';
+          }, 10);
+        } else {
+          console.error('Usage counter element not found in the DOM');
         }
       })
       .catch(error => {
         console.error('Failed to fetch usage count:', error);
-        
-        // Set a default message in the usage counter
-        const usageCounter = document.getElementById('usage-counter');
-        if (usageCounter) {
-          usageCounter.textContent = 'Usage count unavailable';
-          usageCounter.className = 'usage-counter text-sm text-center mx-auto mb-4 text-gray-400';
-        }
-        
-        // Retry after 5 seconds if it's a network error
-        setTimeout(() => {
-          updateUsageCount();
-        }, 5000);
       });
   }
-
-  // Update usage count on page load
-  updateUsageCount();
 
   function showModal() {
     console.log('Showing modal');

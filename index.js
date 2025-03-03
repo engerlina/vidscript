@@ -744,6 +744,8 @@ app.get('/usage-count', async (req, res) => {
         );
         const usageCount = parseInt(result.rows[0].count);
         
+        console.log(`[INFO] Logged-in user ${userIdentifier} has used ${usageCount}/${LOGGED_IN_USER_MAX_USES_PER_DAY} requests today`);
+        
         res.json({
           isLoggedIn: true,
           usageCount: usageCount,
@@ -764,6 +766,8 @@ app.get('/usage-count', async (req, res) => {
     } else {
       // For free users, use the session count
       const usageCount = req.session.usageCount || 0;
+      
+      console.log(`[INFO] Free user has used ${usageCount}/${FREE_USER_MAX_USES_PER_DAY} requests today`);
       
       res.json({
         isLoggedIn: false,
