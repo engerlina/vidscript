@@ -1,12 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
   const urlInput = document.getElementById('urlInput');
   const transcribeBtn = document.getElementById('transcribeBtn');
-  const results = document.getElementById('results');
-  const thumbnail = document.getElementById('thumbnail');
-  const transcription = document.getElementById('transcription');
-  const copyTranscriptionBtn = document.getElementById('copyTranscriptionBtn');
-  const downloadTxtBtn = document.getElementById('downloadTxtBtn');
-  const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+  let results = document.getElementById('results');
+  let thumbnail = document.getElementById('thumbnail');
+  let transcription = document.getElementById('transcription');
+  let copyTranscriptionBtn = document.getElementById('copyTranscriptionBtn');
+  let downloadTxtBtn = document.getElementById('downloadTxtBtn');
+  let downloadCsvBtn = document.getElementById('downloadCsvBtn');
   const languageModal = document.getElementById('language-modal');
   const languageOptionsContainer = document.getElementById('language-options');
   const closeModalBtn = document.getElementById('close-modal-btn');
@@ -195,16 +195,85 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Clear previous results
-    results.innerHTML = '';
-    thumbnail.innerHTML = '';
-    transcription.innerHTML = '';
+    results.innerHTML = `
+      <div id="thumbnail" class="mb-8 mx-auto"></div>
+      <div class="text-center button-container">
+        <button id="copyTranscriptionBtn" class="btn btn-secondary">
+          Copy Transcript
+        </button>
+        <button id="downloadTxtBtn" class="btn btn-outline btn-secondary">
+          Download TXT
+        </button>
+        <button id="downloadCsvBtn" class="btn btn-outline btn-secondary">
+          Download CSV
+        </button>
+      </div>
+      <h2 class="text-xl font-bold mb-4 py-2 vertical-center">
+        Video Transcript
+      </h2>
+      <div class="transcript-container">
+        <div id="transcription" class="mb-8 prose text-lg"></div>
+      </div>
+    `;
+    
+    // Re-assign DOM elements after recreating them
+    thumbnail = document.getElementById('thumbnail');
+    transcription = document.getElementById('transcription');
+    copyTranscriptionBtn = document.getElementById('copyTranscriptionBtn');
+    downloadTxtBtn = document.getElementById('downloadTxtBtn');
+    downloadCsvBtn = document.getElementById('downloadCsvBtn');
+    
+    // Add event listeners for the new buttons
+    copyTranscriptionBtn.addEventListener('click', () => {
+      const transcriptText = transcription.textContent;
+      if (transcriptText) {
+        navigator.clipboard.writeText(transcriptText)
+          .then(() => {
+            // Show a temporary success message
+            const originalText = copyTranscriptionBtn.textContent;
+            copyTranscriptionBtn.textContent = 'Copied!';
+            copyTranscriptionBtn.classList.add('btn-success');
+            
+            setTimeout(() => {
+              copyTranscriptionBtn.textContent = originalText;
+              copyTranscriptionBtn.classList.remove('btn-success');
+            }, 2000);
+          })
+          .catch(err => {
+            console.error('Failed to copy text: ', err);
+            alert('Failed to copy transcript to clipboard');
+          });
+      } else {
+        alert('No transcript available to copy');
+      }
+    });
+    
+    downloadTxtBtn.addEventListener('click', () => {
+      const filename = downloadTxtBtn.getAttribute('data-filename');
+      if (filename) {
+        console.log('Downloading TXT file:', filename);
+        window.location.href = `/download?file=${filename}`;
+      } else {
+        alert('No transcript file available to download');
+      }
+    });
+    
+    downloadCsvBtn.addEventListener('click', () => {
+      const filename = downloadCsvBtn.getAttribute('data-filename');
+      if (filename) {
+        console.log('Downloading CSV file:', filename);
+        window.location.href = `/download?file=${filename}`;
+      } else {
+        alert('No transcript file available to download');
+      }
+    });
     
     // Show loading state
     buttonText.textContent = 'Transcribing...';
     transcribeBtn.disabled = true;
     
-    // Show thumbnail
-    thumbnail.innerHTML = `<img src="https://img.youtube.com/vi/${videoId}/0.jpg" alt="Video Thumbnail" class="thumbnail-img">`;
+    // Show thumbnail with high-quality image
+    thumbnail.innerHTML = `<img src="https://img.youtube.com/vi/${videoId}/maxresdefault.jpg" alt="Video Thumbnail" class="thumbnail-img" onerror="this.src='https://img.youtube.com/vi/${videoId}/0.jpg'">`;
     
     // Ensure we have a CSRF token
     if (!csrfToken) {
@@ -422,11 +491,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.savedTranscripts && data.savedTranscripts.length > 0) {
         const transcript = data.savedTranscripts[0];
         
-        // Display the transcript
-        displayTranscript(transcript.subtitlesText);
+        // Make results visible
+        results.classList.remove('hidden');
         
-        // Enable download buttons
-        enableDownloadButtons(transcript.txtFilename, transcript.csvFilename);
+        // Display the transcript
+        displayTranscription(transcript);
       } else {
         alert('No transcript found for the selected language.');
         transcription.innerHTML = '';
@@ -439,56 +508,39 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function displayTranscription(savedTranscript) {
+    // Clear any loading indicators
+    transcription.innerHTML = '';
+    
+    // Set the transcript text
     transcription.textContent = savedTranscript.subtitlesText;
+    
+    // Make sure the results container is visible
+    results.classList.remove('hidden');
+    
+    // Make sure the transcription container has content and is visible
+    if (transcription.textContent.trim() === '') {
+      console.error('Transcript text is empty!');
+      transcription.innerHTML = '<p class="text-red-500">Error: Transcript text is empty. Please try again.</p>';
+    } else {
+      console.log('Transcript text length:', transcription.textContent.length);
+    }
+    
+    // Force the transcript container to be visible with inline style
+    transcription.style.display = 'block';
+    
+    // Enable download buttons with the correct filenames
     downloadTxtBtn.setAttribute('data-filename', savedTranscript.txtFilename);
     downloadCsvBtn.setAttribute('data-filename', savedTranscript.csvFilename);
+    
+    // Enable all buttons
+    downloadTxtBtn.disabled = false;
+    downloadCsvBtn.disabled = false;
+    copyTranscriptionBtn.disabled = false;
+    
+    console.log('Transcript displayed successfully:', savedTranscript.txtFilename);
   }
 
   transcribeBtn.addEventListener('click', transcribeVideo);
-
-  copyTranscriptionBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(transcription.textContent)
-      .then(() => {
-        alert('Transcription copied to clipboard!');
-      })
-      .catch((error) => {
-        console.error('Failed to copy transcription:', error);
-      });
-  });
-
-  downloadTxtBtn.addEventListener('click', async () => {
-    const filename = downloadTxtBtn.getAttribute('data-filename');
-    if (filename) {
-      try {
-        const response = await fetch(`/download-txt/${filename}`);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-      } catch (error) {
-        console.error('An error occurred while downloading the TXT file:', error);
-      }
-    }
-  });
-
-  downloadCsvBtn.addEventListener('click', async () => {
-    const filename = downloadCsvBtn.getAttribute('data-filename');
-    if (filename) {
-      try {
-        const response = await fetch(`/download-csv/${filename}`);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-      } catch (error) {
-        console.error('An error occurred while downloading the CSV file:', error);
-      }
-    }
-  });
 
   // Clerk authentication handling
   console.log('Setting up Clerk authentication in app.js');
@@ -890,18 +942,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Add a debug button in development mode
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    const debugButtonsContainer = document.createElement('div');
+    debugButtonsContainer.className = 'debug-buttons flex gap-2 justify-center mt-2 mb-4';
+    
     const debugButton = document.createElement('button');
     debugButton.textContent = 'Debug Session';
-    debugButton.className = 'btn btn-sm btn-outline btn-warning mt-2';
+    debugButton.className = 'btn btn-sm btn-outline btn-warning';
     debugButton.addEventListener('click', () => {
       checkSessionStatus();
       alert('Session status checked. See console for details.');
     });
     
+    const resetLimitsButton = document.createElement('button');
+    resetLimitsButton.textContent = 'Reset Limits';
+    resetLimitsButton.className = 'btn btn-sm btn-outline btn-error';
+    resetLimitsButton.addEventListener('click', () => {
+      resetUsageLimits();
+    });
+    
+    debugButtonsContainer.appendChild(debugButton);
+    debugButtonsContainer.appendChild(resetLimitsButton);
+    
     // Add it after the usage counter
     const usageCounter = document.getElementById('usage-counter');
     if (usageCounter && usageCounter.parentNode) {
-      usageCounter.parentNode.insertBefore(debugButton, usageCounter.nextSibling);
+      usageCounter.parentNode.insertBefore(debugButtonsContainer, usageCounter.nextSibling);
     }
+  }
+
+  // Function to reset usage limits (for development only)
+  function resetUsageLimits() {
+    fetch('/reset-usage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      credentials: 'include'
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('[DEBUG] Usage limits reset:', data);
+        alert('Usage limits have been reset. New count: ' + data.usageCount);
+        // Update the usage counter
+        updateUsageCount();
+      })
+      .catch(error => {
+        console.error('[ERROR] Failed to reset usage limits:', error);
+        alert('Failed to reset usage limits: ' + error.message);
+      });
+  }
+
+  // Add the enableDownloadButtons function if it doesn't exist
+  function enableDownloadButtons(txtFilename, csvFilename) {
+    console.log('Enabling download buttons with files:', txtFilename, csvFilename);
+    
+    // Set the filenames as data attributes
+    downloadTxtBtn.setAttribute('data-filename', txtFilename);
+    downloadCsvBtn.setAttribute('data-filename', csvFilename);
+    
+    // Make the buttons visible and enabled
+    downloadTxtBtn.disabled = false;
+    downloadCsvBtn.disabled = false;
+    copyTranscriptionBtn.disabled = false;
+    
+    // Make sure the results container is visible
+    results.classList.remove('hidden');
   }
 });

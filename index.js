@@ -664,6 +664,32 @@ app.get('/download-csv/:filename', (req, res) => {
   res.download(filePath, filename);
 });
 
+// Add a unified download endpoint
+app.get('/download', (req, res) => {
+  const filename = req.query.file;
+  
+  if (!filename) {
+    return res.status(400).json({ error: 'No filename provided' });
+  }
+  
+  // Basic security check to prevent directory traversal
+  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    console.log(`[SECURITY] Blocked suspicious download request for file: ${filename}`);
+    return res.status(403).json({ error: 'Invalid filename' });
+  }
+  
+  const filePath = path.join(TRANSCRIPTS_FOLDER, filename);
+  
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    console.log(`[ERROR] File not found for download: ${filePath}`);
+    return res.status(404).json({ error: 'File not found' });
+  }
+  
+  console.log(`[INFO] Downloading file: ${filename}`);
+  res.download(filePath, filename);
+});
+
 cron.schedule('0 * * * *', () => {
   exec('node deleteOldTranscripts.js', (error, stdout, stderr) => {
     if (error) {
@@ -804,6 +830,33 @@ app.get('/usage-limits', (req, res) => {
   res.json({
     freeUserLimit: FREE_USER_MAX_USES_PER_DAY,
     loggedInUserLimit: LOGGED_IN_USER_MAX_USES_PER_DAY
+  });
+});
+
+// Add a route to reset usage count (development only)
+app.post('/reset-usage', validateRequest, (req, res) => {
+  // Only allow in development mode
+  if (process.env.NODE_ENV === 'production') {
+    console.log('[SECURITY] Attempted to reset usage count in production');
+    return res.status(403).json({ error: 'This endpoint is only available in development mode' });
+  }
+  
+  // Reset the usage count
+  req.session.usageCount = 0;
+  
+  // Force session save to ensure the count is persisted immediately
+  req.session.save(err => {
+    if (err) {
+      console.error('[ERROR] Failed to save session after resetting usage count:', err);
+      return res.status(500).json({ error: 'Failed to reset usage count' });
+    }
+    
+    console.log('[DEBUG] Usage count reset to 0');
+    res.json({ 
+      success: true, 
+      message: 'Usage count reset to 0',
+      usageCount: 0
+    });
   });
 });
 
