@@ -27,6 +27,7 @@
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.0",
     "node-cron": "^3.0.3",
+    "openai": "^4.28.0",
     "pg": "^8.11.5",
     "session": "^0.1.0",
     "youtube-caption-extractor": "^1.4.3",
