@@ -32,6 +32,10 @@
   position: relative !important;
   top: 0 !important;
   transform: none !important;
+  width: 100% !important;
+  max-width: 450px !important;
+  min-width: 320px !important;
+  box-sizing: border-box !important;
 }
 
 /* Fix for modal positioning */
@@ -40,6 +44,10 @@
   align-items: center !important;
   justify-content: center !important;
   height: 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 1rem !important;
+  box-sizing: border-box !important;
 }
 
 /* Fix for modal card positioning */
@@ -48,6 +56,10 @@
   top: 0 !important;
   transform: none !important;
   margin: auto !important;
+  width: 100% !important;
+  max-width: 450px !important;
+  min-width: 320px !important;
+  box-sizing: border-box !important;
 }
 
 /* Ensure the modal backdrop covers everything */
@@ -88,6 +100,8 @@ body > .cl-rootBox {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  box-sizing: border-box !important;
+  padding: 1rem !important;
 }
 
 /* Ensure modals are visible */
@@ -116,6 +130,55 @@ body.clerk-modal-open .cl-backdrop,
 body.clerk-modal-open .cl-backdrop-blur,
 body.clerk-modal-open .cl-auth-form-wrapper {
   z-index: 99999 !important;
+}
+
+/* Fix for form elements inside Clerk modal */
+.cl-form-control {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.cl-socialButtonsIconButton {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.cl-socialButtonsBlock {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.cl-formButtonPrimary {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Fix for internal elements */
+div[class*="cl-internal"] {
+  box-sizing: border-box !important;
+}
+
+/* Fix for form fields */
+.cl-formFieldInput {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.cl-formFieldRow {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.cl-main {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.cl-auth {
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Ensure proper cleanup when modal is closed */

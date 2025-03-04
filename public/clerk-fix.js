@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const modal = document.querySelector('.cl-modal');
         const card = document.querySelector('.cl-card');
         const cardRoot = document.querySelector('.cl-card-root');
+        const socialButtons = document.querySelectorAll('.cl-socialButtonsIconButton');
+        const socialButtonsBlock = document.querySelector('.cl-socialButtonsBlock');
+        const formControls = document.querySelectorAll('.cl-form-control');
+        const formButtons = document.querySelectorAll('.cl-formButtonPrimary');
         
         // Fix modal positioning
         if (modal) {
@@ -19,6 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
           modal.style.alignItems = 'center';
           modal.style.justifyContent = 'center';
           modal.style.height = '100%';
+          modal.style.width = '100%';
+          modal.style.maxWidth = '100%';
+          modal.style.padding = '1rem';
         }
         
         // Fix card positioning
@@ -27,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
           card.style.position = 'relative';
           card.style.top = '0';
           card.style.transform = 'none';
+          card.style.width = '100%';
+          card.style.maxWidth = '450px';
+          card.style.minWidth = '320px';
         }
         
         // Fix card root positioning
@@ -35,7 +45,32 @@ document.addEventListener('DOMContentLoaded', () => {
           cardRoot.style.top = '0';
           cardRoot.style.transform = 'none';
           cardRoot.style.margin = 'auto';
+          cardRoot.style.width = '100%';
+          cardRoot.style.maxWidth = '450px';
+          cardRoot.style.minWidth = '320px';
         }
+        
+        // Fix social buttons
+        socialButtons.forEach(button => {
+          button.style.width = '100%';
+          button.style.maxWidth = '100%';
+        });
+        
+        // Fix social buttons block
+        if (socialButtonsBlock) {
+          socialButtonsBlock.style.width = '100%';
+          socialButtonsBlock.style.maxWidth = '100%';
+        }
+        
+        // Fix form controls
+        formControls.forEach(control => {
+          control.style.width = '100%';
+        });
+        
+        // Fix form buttons
+        formButtons.forEach(button => {
+          button.style.width = '100%';
+        });
       }
       
       // Override Clerk's openSignIn and openSignUp methods
