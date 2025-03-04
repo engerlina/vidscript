@@ -1,0 +1,143 @@
+/* Clerk Modal Container */
+#clerk-modal-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Clerk Components */
+.cl-rootBox,
+.cl-modal,
+.cl-card,
+.cl-component,
+.cl-component-overlay,
+.cl-overlay,
+.cl-backdrop,
+.cl-backdrop-blur,
+.cl-auth-form-wrapper {
+  z-index: 99999 !important;
+  pointer-events: auto;
+}
+
+/* Center the modal content */
+.cl-card {
+  margin: auto !important;
+  position: relative !important;
+  top: 0 !important;
+  transform: none !important;
+}
+
+/* Fix for modal positioning */
+.cl-modal {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
+}
+
+/* Fix for modal card positioning */
+.cl-card-root {
+  position: relative !important;
+  top: 0 !important;
+  transform: none !important;
+  margin: auto !important;
+}
+
+/* Ensure the modal backdrop covers everything */
+.cl-backdrop, 
+.cl-backdrop-blur {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 99990 !important;
+}
+
+/* When modal is open */
+body.clerk-modal-open {
+  overflow: hidden;
+}
+
+body.clerk-modal-open #clerk-modal-container {
+  pointer-events: auto;
+}
+
+/* Lower z-index for page content */
+.page-container, 
+.container, 
+.navbar {
+  z-index: 1 !important;
+}
+
+/* Fix for modal appearing behind content */
+body > .cl-rootBox {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Ensure modals are visible */
+.cl-component-overlay {
+  z-index: 99990 !important;
+}
+
+/* Special rules when clerk modal is open */
+body.clerk-modal-open .page-container,
+body.clerk-modal-open .container,
+body.clerk-modal-open .navbar,
+body.clerk-modal-open button,
+body.clerk-modal-open input,
+body.clerk-modal-open .btn {
+  z-index: 1 !important;
+}
+
+body.clerk-modal-open #clerk-modal-container,
+body.clerk-modal-open .cl-rootBox,
+body.clerk-modal-open .cl-modal,
+body.clerk-modal-open .cl-card,
+body.clerk-modal-open .cl-component,
+body.clerk-modal-open .cl-component-overlay,
+body.clerk-modal-open .cl-overlay,
+body.clerk-modal-open .cl-backdrop,
+body.clerk-modal-open .cl-backdrop-blur,
+body.clerk-modal-open .cl-auth-form-wrapper {
+  z-index: 99999 !important;
+}
+
+/* Ensure proper cleanup when modal is closed */
+body:not(.clerk-modal-open) .container,
+body:not(.clerk-modal-open) .page-container,
+body:not(.clerk-modal-open) .navbar {
+  z-index: auto !important;
+  pointer-events: auto !important;
+}
+
+/* Fix for any lingering inert attributes */
+body:not(.clerk-modal-open) [inert] {
+  inert: none !important;
+  pointer-events: auto !important;
+}
+
+/* Accessibility fix for inert attribute */
+[inert] {
+  pointer-events: none;
+  cursor: default;
+}
+
+[inert] * {
+  user-select: none;
+} 

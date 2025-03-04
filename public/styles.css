@@ -26,7 +26,7 @@ body {
   margin: 0 auto;
   padding: 40px 20px;
   flex: 1;
-  z-index: 100;
+  z-index: 1;
   width: 100%;
 }
 
@@ -81,7 +81,7 @@ body {
   background-color: #adadad;
   color: #fff;
   border-radius: 8px;
-  z-index: 500;
+  z-index: 1;
   margin: 10px;
   padding: 10px;
   width: calc(100% - 20px);
@@ -255,7 +255,7 @@ body {
   background-color: rgba(0, 0, 0, 0.5);
   opacity: 0;
   transition: opacity 0.2s;
-  z-index: 999;
+  z-index: 950;
 }
 
 .modal-toggle {
@@ -559,7 +559,7 @@ svg.fill-current {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9999;
+  z-index: 9000;
   cursor: wait;
 }
 
@@ -576,24 +576,17 @@ svg.fill-current {
 }
 
 /* Fix for Clerk modal appearing behind elements on mobile */
-/* Ensure Clerk modal appears above all other elements */
-.cl-component, 
-.cl-modal, 
-.cl-modal-backdrop, 
-.cl-card,
-.cl-internal-1fsg6zy {
-  z-index: 10000 !important; /* Higher than any other element */
+/* Ensure Clerk modal appears above all other elements - moved to clerk-modal.css */
+
+/* Auth loading spinner */
+.auth-loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem;
 }
 
-.cl-modal-backdrop {
-  position: fixed !important;
-}
-
-/* Ensure Clerk's components are not blocked by any other elements */
-.cl-rootBox, 
-.cl-signIn, 
-.cl-signUp, 
-.cl-userProfile,
-.cl-userButton {
-  z-index: 10000 !important;
+.auth-loading-spinner .loading {
+  width: 1.5rem;
+  height: 1.5rem;
 }
