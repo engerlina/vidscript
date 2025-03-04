@@ -255,7 +255,7 @@ body {
   background-color: rgba(0, 0, 0, 0.5);
   opacity: 0;
   transition: opacity 0.2s;
-  z-index: 950;
+  z-index: 999;
 }
 
 .modal-toggle {
@@ -559,7 +559,7 @@ svg.fill-current {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9000;
+  z-index: 9999;
   cursor: wait;
 }
 
@@ -582,18 +582,11 @@ svg.fill-current {
 .cl-modal-backdrop, 
 .cl-card,
 .cl-internal-1fsg6zy {
-  z-index: 99999 !important; /* Much higher than any other element */
-  position: relative !important;
+  z-index: 10000 !important; /* Higher than any other element */
 }
 
 .cl-modal-backdrop {
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
 }
 
 /* Ensure Clerk's components are not blocked by any other elements */
@@ -602,18 +595,5 @@ svg.fill-current {
 .cl-signUp, 
 .cl-userProfile,
 .cl-userButton {
-  z-index: 99999 !important;
-  position: relative !important;
-}
-
-/* Additional fix for Clerk modal container */
-div[class*="cl-internal"] {
-  z-index: 99999 !important;
-  position: relative !important;
-}
-
-/* Ensure the Clerk modal is properly positioned and visible */
-div[class*="cl-modalContent"] {
-  position: relative !important;
-  z-index: 99999 !important;
+  z-index: 10000 !important;
 }
