@@ -228,8 +228,9 @@ const validateRequest = (req, res, next) => {
   console.log(`[SECURITY] Request to ${req.method} ${req.path}`);
   console.log(`[SECURITY] Referer: ${referer || 'none'}`);
   console.log(`[SECURITY] User-Agent: ${userAgent}`);
-  console.log(`[SECURITY] CSRF Token: ${csrfToken ? 'present' : 'missing'}`);
-  console.log(`[SECURITY] Session Token: ${req.session.csrfToken ? 'present' : 'missing'}`);
+  console.log(`[SECURITY] CSRF Token: ${csrfToken ? (csrfToken.substring(0, 5) + '...') : 'missing'}`);
+  console.log(`[SECURITY] Session Token: ${req.session.csrfToken ? (req.session.csrfToken.substring(0, 5) + '...') : 'missing'}`);
+  console.log(`[SECURITY] Request body:`, JSON.stringify(req.body).substring(0, 100) + '...');
   
   // In production, block direct API calls (curl, postman, etc.)
   if (process.env.NODE_ENV === 'production') {
@@ -1004,10 +1005,20 @@ const openai = new OpenAI({
 // Add route for generating summary
 app.post('/generate-summary', validateRequest, async (req, res) => {
   try {
+    console.log('[AI] Generate summary request received');
     const { transcript, length, focus } = req.body;
+    
+    if (!transcript || transcript.trim() === '') {
+      console.error('[AI] No transcript provided for summary');
+      return res.status(400).json({ error: 'No transcript provided' });
+    }
+    
+    console.log(`[AI] Generating summary with length: ${length}, focus: ${focus || 'main points'}`);
+    console.log(`[AI] Transcript length: ${transcript.length} characters`);
     
     const prompt = `Output should be in Markdown format. Summarise this transcript into [${length} words] with a focus on ${focus || 'the main points'}\n\n${transcript}`;
     
+    console.log('[AI] Sending request to OpenAI');
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -1024,9 +1035,10 @@ app.post('/generate-summary', validateRequest, async (req, res) => {
       presence_penalty: 0
     });
 
+    console.log('[AI] Summary generated successfully');
     res.json({ output: response.choices[0].message.content });
   } catch (error) {
-    console.error('Error generating summary:', error);
+    console.error('[AI] Error generating summary:', error);
     res.status(500).json({ error: 'Failed to generate summary' });
   }
 });
@@ -1034,7 +1046,13 @@ app.post('/generate-summary', validateRequest, async (req, res) => {
 // Add route for repurposing content
 app.post('/generate-repurpose', validateRequest, async (req, res) => {
   try {
+    console.log('[AI] Generate repurpose request received');
     const { transcript, purpose, tone } = req.body;
+    
+    if (!transcript || transcript.trim() === '') {
+      console.error('[AI] No transcript provided for repurpose');
+      return res.status(400).json({ error: 'No transcript provided' });
+    }
     
     let maxLength;
     switch (purpose) {
@@ -1051,8 +1069,12 @@ app.post('/generate-repurpose', validateRequest, async (req, res) => {
         maxLength = '4000 characters';
     }
     
+    console.log(`[AI] Repurposing content for: ${purpose}, tone: ${tone}, max length: ${maxLength}`);
+    console.log(`[AI] Transcript length: ${transcript.length} characters`);
+    
     const prompt = `Output should be in Markdown format. Repurpose this transcript into a ${purpose} (maximum ${maxLength}) using a ${tone} tone of voice:\n\n${transcript}`;
     
+    console.log('[AI] Sending request to OpenAI');
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -1069,9 +1091,10 @@ app.post('/generate-repurpose', validateRequest, async (req, res) => {
       presence_penalty: 0
     });
 
+    console.log('[AI] Repurpose content generated successfully');
     res.json({ output: response.choices[0].message.content });
   } catch (error) {
-    console.error('Error repurposing content:', error);
+    console.error('[AI] Error repurposing content:', error);
     res.status(500).json({ error: 'Failed to repurpose content' });
   }
 });

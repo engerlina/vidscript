@@ -56,15 +56,200 @@ body {
   font-weight: bold;
 }
 
+/* Mobile-first button container */
 .button-container {
   display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1.5rem auto;
+  width: 100%;
+  max-width: 400px;
+  padding: 0 1rem;
+}
+
+.button-container button,
+.button-container .tooltip {
+  width: 100%;
+  margin: 0;
+  height: auto;
+}
+
+.button-container .tooltip {
+  display: block;
+  width: 100%;
+}
+
+.button-container .tooltip button {
+  margin: 0;
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 10px;
+  width: 100%;
+}
+
+/* Media query for larger screens */
+@media (min-width: 768px) {
+  .button-container {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    max-width: 100%;
+    gap: 0.75rem;
+    padding: 0 1rem;
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .button-container button,
+  .button-container .tooltip {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  /* Give more space to the COPY TRANSCRIPT button */
+  .button-container button#copyTranscriptionBtn,
+  .button-container button[id^="copyTranscriptionBtn-"] {
+    flex: 1.5 !important;
+  }
+  
+  .button-container .tooltip {
+    display: inline-flex;
+  }
+}
+
+@media (min-width: 768px) {
+  .button-container button {
+    font-size: 0.85rem;
+    padding: 0 0.25rem;
+  }
+  
+  /* Ensure COPY TRANSCRIPT text is fully visible */
+  .button-container button#copyTranscriptionBtn span,
+  .button-container button[id^="copyTranscriptionBtn-"] span {
+    font-size: 0.9rem;
+  }
+  
+  /* Ensure download buttons text is properly displayed */
+  .button-container button#downloadTxtBtn,
+  .button-container button#downloadCsvBtn,
+  .button-container button[id^="downloadTxtBtn-"],
+  .button-container button[id^="downloadCsvBtn-"] {
+    min-width: 120px;
+  }
+  
+  .button-container button#downloadTxtBtn span,
+  .button-container button#downloadCsvBtn span,
+  .button-container button[id^="downloadTxtBtn-"] span,
+  .button-container button[id^="downloadCsvBtn-"] span {
+    font-size: 0.8rem;
+    line-height: 1.1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .button-container button {
+    font-size: 0.9rem;
+    padding: 0 0.5rem;
+  }
 }
 
 .button-container button {
-  flex: 1;
-  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 3.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  padding: 0 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Media query for even larger screens */
+@media (min-width: 1024px) {
+  .button-container {
+    padding: 0 1rem;
+    gap: 0.75rem;
+  }
+}
+
+.button-container button.btn-secondary {
+  background-color: #e91e63;
+  color: white;
+  border: none;
+}
+
+.button-container button.btn-outline {
+  background-color: white;
+  color: #e91e63;
+  border: 1px solid #e91e63;
+}
+
+.button-container button.btn-outline.btn-secondary:hover {
+  background-color: rgba(233, 30, 99, 0.1);
+}
+
+/* Disabled button styling */
+.button-container .tooltip button.btn.bg-gray-400 {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  border: none;
+  cursor: not-allowed;
+}
+
+.button-container .tooltip button.btn.bg-gray-400 svg {
+  color: #9ca3af;
+  margin-right: 0.25rem;
+  flex-shrink: 0;
+}
+
+/* Enabled Summarize and Repurpose buttons with unlocked icon */
+.button-container .tooltip button.btn-primary {
+  background-color: #6366f1;
+  color: white;
+  border: none;
+}
+
+.button-container .tooltip button.btn-primary svg {
+  color: white;
+  margin-right: 0.25rem;
+  flex-shrink: 0;
+}
+
+.button-container button span {
+  display: inline-block;
+  line-height: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.02em;
+  font-size: 0.9rem;
+}
+
+/* Allow text wrapping for download buttons */
+.button-container button#downloadTxtBtn span,
+.button-container button#downloadCsvBtn span,
+.button-container button[id^="downloadTxtBtn-"] span,
+.button-container button[id^="downloadCsvBtn-"] span {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+/* Adjust width for download buttons */
+.button-container button#downloadTxtBtn,
+.button-container button#downloadCsvBtn,
+.button-container button[id^="downloadTxtBtn-"],
+.button-container button[id^="downloadCsvBtn-"] {
+  min-width: 110px;
+  padding: 0 0.5rem;
 }
 
 .vertical-center {
@@ -282,16 +467,24 @@ body {
   transform: scale(1);
 }
 
-.button-container {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-bottom: 1rem;
+/* Disabled button styling */
+.btn[disabled], .btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  background-color: #d1d5db !important; /* Light gray background */
+  color: #6b7280 !important; /* Darker gray text */
+  border: 1px solid #9ca3af !important; /* Medium gray border */
 }
 
-.button-container button {
-  margin: 0.25rem;
+/* For label elements that act as buttons */
+label.btn[disabled], label.btn.btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: auto; /* Allow clicks to open modal */
+  background-color: #d1d5db !important; /* Light gray background */
+  color: #6b7280 !important; /* Darker gray text */
+  border: 1px solid #9ca3af !important; /* Medium gray border */
 }
 
 svg.fill-current {
@@ -328,48 +521,38 @@ svg.fill-current {
 
 /* ===== MOBILE SPECIFIC STYLES ===== */
 @media (max-width: 640px) {
-  /* Page container mobile styles */
   .page-container {
-    padding: 20px 15px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+    padding: 1rem 0.5rem;
   }
   
-  /* Input container mobile styles */
   .input-container {
     flex-direction: column;
-    gap: 10px;
-    width: 100%;
+    gap: 0.5rem;
   }
   
   #urlInput {
     width: 100%;
-    min-width: 0;
-    height: 3rem;
+    margin-right: 0;
+    margin-bottom: 0.5rem;
   }
   
-  /* Dropdown mobile styles - force everything to right */
   .navbar-end.sm\:hidden {
-    padding-right: 0;  /* No right padding */
+    display: none;
   }
   
-  /* Mobile dropdown menu styling */
   .navbar-end .dropdown {
     display: block;
   }
-
-  /* Mobile dropdown button styling */
+  
   .navbar #dropdown-sign-in-button {
-    color: #1f2937;
-    background-color: white;
-    border: none;
+    background-color: transparent;
+    color: #6366f1;
+    border: 1px solid #6366f1;
   }
-
+  
   .navbar #dropdown-sign-up-button {
+    background-color: #6366f1;
     color: white;
-    background-color: gray;
     border: 1px solid gray;
   }
 }
@@ -508,6 +691,56 @@ svg.fill-current {
   margin-left: auto;
 }
 
+/* Toast notification styling */
+.toast {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  max-width: 24rem;
+  animation: toast-in 0.3s ease-in-out, toast-out 0.3s ease-in-out 5s forwards;
+}
+
+.toast .alert {
+  width: 100%;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.toast .alert div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.toast .btn {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
 @keyframes pulse-warning {
   0% {
     box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
@@ -589,4 +822,32 @@ svg.fill-current {
 .auth-loading-spinner .loading {
   width: 1.5rem;
   height: 1.5rem;
+}
+
+/* Specific styling for feature buttons when disabled */
+#summarizeBtn.btn.bg-gray-400,
+#repurposeBtn.btn.bg-gray-400 {
+  background-color: #d1d5db !important;
+  color: #6b7280 !important;
+  border: 1px solid #9ca3af !important;
+  cursor: not-allowed !important;
+  opacity: 0.7 !important;
+  pointer-events: auto !important; /* Allow clicks to open auth modal */
+}
+
+/* Override any hover effects */
+#summarizeBtn.btn.bg-gray-400:hover,
+#repurposeBtn.btn.bg-gray-400:hover {
+  background-color: #d1d5db !important;
+  color: #6b7280 !important;
+  border: 1px solid #9ca3af !important;
+}
+
+/* Video transcript heading */
+h2.vertical-center {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
 }

@@ -41,22 +41,32 @@
               class="w-full"
             />
           </div>
-          <div class="text-center button-container">
+          <div class="button-container">
             <button id="copyTranscriptionBtn" class="btn btn-secondary">
-              Copy Transcript
+              <span>COPY TRANSCRIPT</span>
             </button>
             <button id="downloadTxtBtn" class="btn btn-outline btn-secondary">
-              Download TXT
+              <span>DOWNLOAD TXT</span>
             </button>
             <button id="downloadCsvBtn" class="btn btn-outline btn-secondary">
-              Download CSV
+              <span>DOWNLOAD CSV</span>
             </button>
-            <label for="summarize-modal" class="btn btn-primary">
-              Summarize
-            </label>
-            <label for="repurpose-modal" class="btn btn-primary">
-              Repurpose
-            </label>
+            <div class="tooltip" data-tip="Sign up for free to use">
+              <button id="summarizeBtn" class="btn bg-gray-400 text-gray-700 cursor-not-allowed" disabled="disabled" data-auth-required="true">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>SUMMARIZE</span>
+              </button>
+            </div>
+            <div class="tooltip" data-tip="Sign up for free to use">
+              <button id="repurposeBtn" class="btn bg-gray-400 text-gray-700 cursor-not-allowed" disabled="disabled" data-auth-required="true">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>REPURPOSE</span>
+              </button>
+            </div>
           </div>
           <div id="aiOutput" class="my-8 w-full hidden">
             <div class="bg-gray-100 p-4 rounded-lg w-full">
@@ -121,7 +131,7 @@
             </label>
             <input type="text" id="summaryFocus" placeholder="Enter focus area" class="input input-bordered w-full" />
             
-            <button id="generateSummaryBtn" class="btn btn-primary mt-6">Generate Summary</button>
+            <button id="generateSummaryBtn" class="btn btn-primary mt-6" onclick="handleGenerateSummary()">Generate Summary</button>
           </div>
           <div class="modal-action">
             <label for="summarize-modal" class="btn">Close</label>
@@ -153,7 +163,7 @@
               <option value="humorous">Humorous</option>
             </select>
             
-            <button id="generateRepurposeBtn" class="btn btn-primary mt-6">Generate Content</button>
+            <button id="generateRepurposeBtn" class="btn btn-primary mt-6" onclick="handleGenerateRepurpose()">Generate Content</button>
           </div>
           <div class="modal-action">
             <label for="repurpose-modal" class="btn">Close</label>
@@ -163,8 +173,54 @@
       <%- include('footer') %>
     </div>
     
+    <!-- Auth Required Modal -->
+    <input type="checkbox" id="auth-required-modal" class="modal-toggle" />
+    <div class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg">Sign in required</h3>
+        <p class="py-4">Summarize and Repurpose are only available to signed in users for free.</p>
+        <p class="py-2">Would you like to sign up?</p>
+        <div class="modal-action">
+          <label for="auth-required-modal" class="btn">No, thank you</label>
+          <button id="authModalSignUpBtn" class="btn btn-primary">Yes, please!</button>
+        </div>
+      </div>
+    </div>
+    
     <!-- Clerk Initialization Helper -->
     <script>
+      // Immediately disable auth-required buttons
+      (function() {
+        var authButtons = document.querySelectorAll('[data-auth-required="true"]');
+        for (var i = 0; i < authButtons.length; i++) {
+          // Ensure buttons are disabled
+          authButtons[i].disabled = true;
+          authButtons[i].className = "btn bg-gray-400 text-gray-700 cursor-not-allowed";
+          
+          // Set click handler to open auth modal
+          authButtons[i].onclick = function(e) {
+            // Prevent default action
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Open auth modal
+            var modal = document.getElementById('auth-required-modal');
+            if (modal) modal.checked = true;
+            
+            // Return false to prevent any other handlers
+            return false;
+          };
+          
+          // Ensure tooltip is set on parent div
+          var tooltipParent = authButtons[i].closest('.tooltip');
+          if (tooltipParent) {
+            tooltipParent.setAttribute('data-tip', 'Sign up for free to use');
+          }
+        }
+        
+        console.log("[DEBUG] Auth-required buttons disabled on initial page load");
+      })();
+      
       // Add event listener for when Clerk is loaded
       document.addEventListener('DOMContentLoaded', function() {
         console.log("[DEBUG] DOMContentLoaded - checking Clerk status");
@@ -263,11 +319,464 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/app.js"></script>
     
+    <script>
+      // Handler functions for the generate buttons
+      async function handleGenerateSummary() {
+        console.log('handleGenerateSummary called');
+        
+        try {
+          // Get the transcription element
+          const transcriptionElement = document.getElementById('transcription');
+          if (!transcriptionElement) {
+            console.error('Transcription element not found');
+            alert('Transcription element not found');
+            return;
+          }
+          
+          // Check if it has content
+          if (!transcriptionElement.textContent || transcriptionElement.textContent.trim() === '') {
+            console.error('No transcript content available');
+            alert('No transcript content available. Please transcribe a video first.');
+            return;
+          }
+          
+          // Get the form values
+          const length = document.getElementById('summaryLength').value;
+          const focus = document.getElementById('summaryFocus').value;
+          
+          // Close the modal first
+          const modalCheckbox = document.getElementById('summarize-modal');
+          if (modalCheckbox) {
+            console.log('Closing summarize modal');
+            modalCheckbox.checked = false;
+          }
+          
+          // Show loading overlay with rotating messages
+          showLoadingOverlay();
+          
+          // Disable the generate button
+          const generateBtn = document.getElementById('generateSummaryBtn');
+          if (generateBtn) {
+            generateBtn.disabled = true;
+            generateBtn.classList.add('loading');
+          }
+          
+          try {
+            // Get CSRF token
+            const csrfTokenResponse = await fetch('/csrf-token');
+            if (!csrfTokenResponse.ok) {
+              throw new Error('Failed to get CSRF token');
+            }
+            const csrfData = await csrfTokenResponse.json();
+            const csrfToken = csrfData.csrfToken;
+            
+            // Make the API request
+            const response = await fetch('/generate-summary', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+              },
+              body: JSON.stringify({
+                transcript: transcriptionElement.textContent,
+                length: length,
+                focus: focus
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Failed to generate summary: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            // Show the AI output
+            const aiOutput = document.getElementById('aiOutput');
+            if (!aiOutput) {
+              console.error('AI output element not found');
+              return;
+            }
+            
+            console.log('Making AI output visible');
+            aiOutput.style.display = 'block';
+            aiOutput.classList.remove('hidden');
+            
+            // Make sure the aiOutput element is visible by adding inline styles
+            aiOutput.style.visibility = 'visible';
+            aiOutput.style.opacity = '1';
+            
+            const aiOutputTitle = document.getElementById('aiOutputTitle');
+            if (aiOutputTitle) {
+              aiOutputTitle.textContent = 'AI Summary';
+            }
+            
+            // Clear any existing badges
+            const aiOutputBadges = document.getElementById('aiOutputBadges');
+            if (aiOutputBadges) {
+              console.log('Clearing AI output badges');
+              aiOutputBadges.innerHTML = '';
+              
+              // Add badges
+              const typeBadge = document.createElement('div');
+              typeBadge.className = 'badge badge-primary';
+              typeBadge.textContent = 'Summary';
+              aiOutputBadges.appendChild(typeBadge);
+              
+              const lengthBadge = document.createElement('div');
+              lengthBadge.className = 'badge';
+              lengthBadge.textContent = `Length: ${length}`;
+              aiOutputBadges.appendChild(lengthBadge);
+              
+              if (focus) {
+                const focusBadge = document.createElement('div');
+                focusBadge.className = 'badge';
+                focusBadge.textContent = `Focus: ${focus}`;
+                aiOutputBadges.appendChild(focusBadge);
+              }
+            }
+            
+            const aiOutputContent = document.getElementById('aiOutputContent');
+            if (aiOutputContent) {
+              console.log('Setting AI output content');
+              // Store the original markdown for copying
+              aiOutputContent.setAttribute('data-markdown', data.output);
+              // Render the markdown as HTML
+              aiOutputContent.innerHTML = marked.parse(data.output);
+            } else {
+              console.error('AI output content element not found');
+            }
+            
+            // Scroll to the AI output
+            setTimeout(() => {
+              aiOutput.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+            
+            // Initialize the copy button
+            const copyAiOutputBtn = document.getElementById('copyAiOutputBtn');
+            if (copyAiOutputBtn) {
+              console.log('Initializing copy button');
+              // Remove any existing event listeners by cloning and replacing
+              const newCopyBtn = copyAiOutputBtn.cloneNode(true);
+              copyAiOutputBtn.parentNode.replaceChild(newCopyBtn, copyAiOutputBtn);
+              
+              // Add the click event listener to the new button
+              newCopyBtn.addEventListener('click', function() {
+                console.log('Copy button clicked');
+                const dataMarkdown = aiOutputContent.getAttribute('data-markdown');
+                const contentToCopy = dataMarkdown || aiOutputContent.textContent;
+                
+                navigator.clipboard.writeText(contentToCopy)
+                  .then(() => {
+                    console.log('Content copied to clipboard');
+                    
+                    // Show visual feedback
+                    const copyIcon = document.getElementById('copyIcon');
+                    const checkIcon = document.getElementById('checkIcon');
+                    
+                    if (copyIcon && checkIcon) {
+                      copyIcon.classList.add('hidden');
+                      checkIcon.classList.remove('hidden');
+                      
+                      setTimeout(() => {
+                        copyIcon.classList.remove('hidden');
+                        checkIcon.classList.add('hidden');
+                      }, 2000);
+                    }
+                  })
+                  .catch(err => {
+                    console.error('Failed to copy content:', err);
+                    alert('Failed to copy content');
+                  });
+              });
+            }
+            
+            console.log('Summary generation complete');
+          } catch (error) {
+            console.error('API error:', error);
+            alert(`Failed to generate summary: ${error.message}`);
+          } finally {
+            // Hide loading overlay
+            hideLoadingOverlay();
+            
+            // Re-enable the generate button
+            const generateBtn = document.getElementById('generateSummaryBtn');
+            if (generateBtn) {
+              generateBtn.disabled = false;
+              generateBtn.classList.remove('loading');
+            }
+          }
+        } catch (error) {
+          console.error('Error in handleGenerateSummary:', error);
+          alert(`An error occurred: ${error.message}`);
+        }
+      }
+
+      async function handleGenerateRepurpose() {
+        console.log('handleGenerateRepurpose called');
+        
+        try {
+          // Get the transcription element
+          const transcriptionElement = document.getElementById('transcription');
+          if (!transcriptionElement) {
+            console.error('Transcription element not found');
+            alert('Transcription element not found');
+            return;
+          }
+          
+          // Check if it has content
+          if (!transcriptionElement.textContent || transcriptionElement.textContent.trim() === '') {
+            console.error('No transcript content available');
+            alert('No transcript content available. Please transcribe a video first.');
+            return;
+          }
+          
+          // Get the form values
+          const purpose = document.getElementById('repurposePurpose').value;
+          const tone = document.getElementById('repurposeTone').value;
+          
+          // Close the modal first
+          const modalCheckbox = document.getElementById('repurpose-modal');
+          if (modalCheckbox) {
+            console.log('Closing repurpose modal');
+            modalCheckbox.checked = false;
+          }
+          
+          // Show loading overlay with rotating messages
+          showLoadingOverlay();
+          
+          // Disable the generate button
+          const generateBtn = document.getElementById('generateRepurposeBtn');
+          if (generateBtn) {
+            generateBtn.disabled = true;
+            generateBtn.classList.add('loading');
+          }
+          
+          try {
+            // Get CSRF token
+            const csrfTokenResponse = await fetch('/csrf-token');
+            if (!csrfTokenResponse.ok) {
+              throw new Error('Failed to get CSRF token');
+            }
+            const csrfData = await csrfTokenResponse.json();
+            const csrfToken = csrfData.csrfToken;
+            
+            // Make the API request
+            const response = await fetch('/generate-repurpose', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+              },
+              body: JSON.stringify({
+                transcript: transcriptionElement.textContent,
+                purpose: purpose,
+                tone: tone
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Failed to generate repurpose: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            // Show the AI output
+            const aiOutput = document.getElementById('aiOutput');
+            if (!aiOutput) {
+              console.error('AI output element not found');
+              return;
+            }
+            
+            console.log('Making AI output visible');
+            aiOutput.style.display = 'block';
+            aiOutput.classList.remove('hidden');
+            
+            // Make sure the aiOutput element is visible by adding inline styles
+            aiOutput.style.visibility = 'visible';
+            aiOutput.style.opacity = '1';
+            
+            const aiOutputTitle = document.getElementById('aiOutputTitle');
+            if (aiOutputTitle) {
+              aiOutputTitle.textContent = 'AI Repurpose';
+            }
+            
+            // Clear any existing badges
+            const aiOutputBadges = document.getElementById('aiOutputBadges');
+            if (aiOutputBadges) {
+              console.log('Clearing AI output badges');
+              aiOutputBadges.innerHTML = '';
+              
+              // Add badges
+              const typeBadge = document.createElement('div');
+              typeBadge.className = 'badge badge-primary';
+              typeBadge.textContent = 'Repurpose';
+              aiOutputBadges.appendChild(typeBadge);
+              
+              const purposeBadge = document.createElement('div');
+              purposeBadge.className = 'badge';
+              purposeBadge.textContent = `Purpose: ${purpose}`;
+              aiOutputBadges.appendChild(purposeBadge);
+              
+              const toneBadge = document.createElement('div');
+              toneBadge.className = 'badge';
+              toneBadge.textContent = `Tone: ${tone}`;
+              aiOutputBadges.appendChild(toneBadge);
+            }
+            
+            const aiOutputContent = document.getElementById('aiOutputContent');
+            if (aiOutputContent) {
+              console.log('Setting AI output content');
+              // Store the original markdown for copying
+              aiOutputContent.setAttribute('data-markdown', data.output);
+              // Render the markdown as HTML
+              aiOutputContent.innerHTML = marked.parse(data.output);
+            } else {
+              console.error('AI output content element not found');
+            }
+            
+            // Scroll to the AI output
+            setTimeout(() => {
+              aiOutput.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+            
+            // Initialize the copy button
+            const copyAiOutputBtn = document.getElementById('copyAiOutputBtn');
+            if (copyAiOutputBtn) {
+              console.log('Initializing copy button');
+              // Remove any existing event listeners by cloning and replacing
+              const newCopyBtn = copyAiOutputBtn.cloneNode(true);
+              copyAiOutputBtn.parentNode.replaceChild(newCopyBtn, copyAiOutputBtn);
+              
+              // Add the click event listener to the new button
+              newCopyBtn.addEventListener('click', function() {
+                console.log('Copy button clicked');
+                const dataMarkdown = aiOutputContent.getAttribute('data-markdown');
+                const contentToCopy = dataMarkdown || aiOutputContent.textContent;
+                
+                navigator.clipboard.writeText(contentToCopy)
+                  .then(() => {
+                    console.log('Content copied to clipboard');
+                    
+                    // Show visual feedback
+                    const copyIcon = document.getElementById('copyIcon');
+                    const checkIcon = document.getElementById('checkIcon');
+                    
+                    if (copyIcon && checkIcon) {
+                      copyIcon.classList.add('hidden');
+                      checkIcon.classList.remove('hidden');
+                      
+                      setTimeout(() => {
+                        copyIcon.classList.remove('hidden');
+                        checkIcon.classList.add('hidden');
+                      }, 2000);
+                    }
+                  })
+                  .catch(err => {
+                    console.error('Failed to copy content:', err);
+                    alert('Failed to copy content');
+                  });
+              });
+            }
+            
+            console.log('Repurpose generation complete');
+          } catch (error) {
+            console.error('API error:', error);
+            alert(`Failed to generate repurpose: ${error.message}`);
+          } finally {
+            // Hide loading overlay
+            hideLoadingOverlay();
+            
+            // Re-enable the generate button
+            const generateBtn = document.getElementById('generateRepurposeBtn');
+            if (generateBtn) {
+              generateBtn.disabled = false;
+              generateBtn.classList.remove('loading');
+            }
+          }
+        } catch (error) {
+          console.error('Error in handleGenerateRepurpose:', error);
+          alert(`An error occurred: ${error.message}`);
+        }
+      }
+      
+      // Array of loading messages
+      const loadingMessages = [
+        "Brewing some content magic ✨... almost there!",
+        "Hold on! We're sprinkling the word wizardry 🧙‍♂️.",
+        "Rephrasing the awesomeness... stay tuned 👍.",
+        "Content remix in progress 🎧... just a moment!",
+        "Summoning the wordsmith bots 🤖... standby!",
+        "Loading your fresh-baked content cookies 🍪...",
+        "Spinning the content gears ⚙️ – nearly done!",
+        "Feeding ideas to the creative machine 🚀... hang tight!",
+        "Polishing the best bits ✨... your content's coming soon!",
+        "Turning content coal into content diamonds 💎... just a sec!"
+      ];
+      
+      // Variable to store the interval ID for message rotation
+      let messageRotationInterval;
+      
+      // Function to show the loading overlay with rotating messages
+      function showLoadingOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        const messageElement = document.getElementById('loadingMessage');
+        
+        if (overlay) {
+          overlay.classList.remove('hidden');
+          document.body.style.overflow = 'hidden'; // Prevent scrolling
+          
+          // Set initial message
+          if (messageElement) {
+            messageElement.textContent = loadingMessages[0];
+          }
+          
+          // Start rotating messages every 2 seconds
+          let currentIndex = 1; // Start with the second message on first rotation
+          
+          // Clear any existing interval
+          if (messageRotationInterval) {
+            clearInterval(messageRotationInterval);
+          }
+          
+          messageRotationInterval = setInterval(() => {
+            if (messageElement) {
+              // Add fade-out class
+              messageElement.classList.add('fade-out');
+              
+              // After a short delay, change the text and remove the fade-out class
+              setTimeout(() => {
+                messageElement.textContent = loadingMessages[currentIndex];
+                messageElement.classList.remove('fade-out');
+                
+                // Increment index and loop back to 0 if we reach the end
+                currentIndex = (currentIndex + 1) % loadingMessages.length;
+              }, 300);
+            }
+          }, 2000); // Rotate every 2 seconds
+        }
+      }
+      
+      // Function to hide the loading overlay
+      function hideLoadingOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+          overlay.classList.add('hidden');
+          document.body.style.overflow = ''; // Restore scrolling
+          
+          // Clear the message rotation interval
+          if (messageRotationInterval) {
+            clearInterval(messageRotationInterval);
+            messageRotationInterval = null;
+          }
+        }
+      }
+    </script>
+    
     <!-- Loading overlay for AI generation -->
     <div id="loadingOverlay" class="loading-overlay hidden">
       <div class="loading-overlay-content">
         <span class="loading loading-spinner loading-lg"></span>
-        <progress class="progress w-56 my-4" value="100" max="100"></progress>
+        <progress class="progress w-56"></progress>
         <p id="loadingMessage" class="text-lg font-medium">Generating AI content...</p>
         <p class="text-sm text-gray-500">Please wait, this may take a few moments</p>
       </div>
