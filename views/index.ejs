@@ -129,7 +129,15 @@
             <label class="label mt-4">
               <span class="label-text">Focus</span>
             </label>
-            <input type="text" id="summaryFocus" placeholder="Enter focus area" class="input input-bordered w-full" />
+            <select id="summaryFocus" class="select select-bordered w-full">
+              <option value="Topic Extraction">Topic Extraction</option>
+              <option value="Actionable Insights">Actionable Insights</option>
+              <option value="Emotional Tone">Emotional Tone</option>
+              <option value="Bullet Points">Bullet Points</option>
+              <option value="Step by Step Guide">Step by Step Guide</option>
+              <option value="Detailed">Detailed</option>
+              <option value="Concise">Concise</option>
+            </select>
             
             <button id="generateSummaryBtn" class="btn btn-primary mt-6" onclick="handleGenerateSummary()">Generate Summary</button>
           </div>

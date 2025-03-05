@@ -1947,4 +1947,40 @@ document.addEventListener('DOMContentLoaded', async () => {
       modal.checked = false;
     }
   };
+
+  // Debounce function to prevent multiple rapid calls
+  function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+      const context = this;
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+  }
+
+  // Debounced version of updateUsageCount
+  const debouncedUpdateUsageCount = debounce(function() {
+    // Original updateUsageCount logic here
+    fetch('/usage-count', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
+    })
+    .then(response => {
+      console.log('[DEBUG] Server responded with status:', response.status);
+      return response.json();
+    })
+    .then(data => {
+      console.log('[DEBUG] Usage count response:', data);
+      console.log('[DEBUG] Login state from usage count API:', data.isLoggedIn);
+      
+      // Update the usage counter in the UI
+      updateUsageCounterUI(data);
+    })
+    .catch(error => {
+      console.error('[ERROR] Failed to fetch usage count:', error);
+    });
+  }, 500); // Only allow one call every 500ms
 });

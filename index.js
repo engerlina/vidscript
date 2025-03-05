@@ -145,8 +145,8 @@ app.get(
 );
 
 // Updated rate limits
-const FREE_USER_MAX_USES_PER_DAY = 5;
-const LOGGED_IN_USER_MAX_USES_PER_DAY = 20;
+const FREE_USER_MAX_USES_PER_DAY = 3;
+const LOGGED_IN_USER_MAX_USES_PER_DAY = 10;
 const TRANSCRIPTS_FOLDER = path.join(__dirname, 'transcripts');
 
 // Configure CORS to only allow requests from your domain
